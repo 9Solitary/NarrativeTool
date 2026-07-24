@@ -1,0 +1,9 @@
+{
+    "id": "flow-tools",
+    "name": "Flow Tools",
+    "version": "0.1.0",
+    "minAppVersion": "1.5.0",
+    "description": "Create and manage narrative flow canvases for Obsidian",
+    "author": "Narrative Toolchain",
+    "isDesktopOnly": true
+}

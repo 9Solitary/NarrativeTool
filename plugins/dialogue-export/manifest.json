@@ -1,0 +1,9 @@
+{
+    "id": "dialogue-export",
+    "name": "Dialogue Export",
+    "version": "0.1.0",
+    "minAppVersion": "1.5.0",
+    "description": "Export Narrative Canvas dialogues to Godot Dialogue Manager .dialogue format",
+    "author": "Narrative Toolchain",
+    "isDesktopOnly": true
+}
