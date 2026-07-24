@@ -63,4 +63,33 @@ class Setting {
     }
 }
 
-module.exports = { PluginSettingTab, Setting };
+// Minimal Plugin stub: base class for Obsidian plugins
+class Plugin {
+    constructor(app, manifest) {
+        this.app = app;
+        this.manifest = manifest;
+    }
+
+    async loadData() {
+        return {};
+    }
+
+    async saveData(data) {
+        // no-op stub
+    }
+
+    addSettingTab(tab) {
+        this._settingTab = tab;
+    }
+
+    addCommand(command) {
+        this._commands = this._commands || [];
+        this._commands.push(command);
+    }
+
+    registerEvent(eventRef) {
+        // no-op stub
+    }
+}
+
+module.exports = { Plugin, PluginSettingTab, Setting };
