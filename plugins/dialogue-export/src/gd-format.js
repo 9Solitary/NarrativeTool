@@ -296,6 +296,13 @@ function formatChoiceNode(node, ctx) {
                 const subVisited = new Set();
                 const subtreeLines = walkSubtree(targetLink.to, ctx.depth + 1, subVisited);
                 lines.push(...subtreeLines);
+
+                // Emit MED mutations inline under the target content (MED-02, MED-03)
+                // Mutations come from choice option effects, not the target node itself.
+                if (ctx.formatMutationLines && Array.isArray(opt.effects) && opt.effects.length > 0) {
+                    const mutLines = ctx.formatMutationLines(opt.effects, ctx.depth + 1);
+                    lines.push(...mutLines);
+                }
             }
         }
     } else {

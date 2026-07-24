@@ -7,7 +7,7 @@
 // and Pattern 4 (Character Name Resolution).
 
 const { formatNode } = require('./gd-format');
-const { detectMedState, formatMedNode, formatMedHeader } = require('./med-format');
+const { detectMedState, formatMedNode, formatMedHeader, formatMutationsForEffects } = require('./med-format');
 
 // -------------------------------------------------------------------------
 // Character name resolution
@@ -256,6 +256,14 @@ function exportEngine(ncanvasJson, config) {
             }
             return baseLines;
         },
+        formatMedNode: function(node, childCtx) {
+            if (!medDetected) return [];
+            return formatMedNode(node, childCtx) || [];
+        },
+        formatMutationLines: function(effects, effDepth) {
+            if (!medDetected) return [];
+            return formatMutationsForEffects(effects, effDepth) || [];
+        },
         resolveCharacter: resolveCharacter,
         resolveVariables: resolveVariables,
         adjacency: adjacency,
@@ -282,14 +290,12 @@ function exportEngine(ncanvasJson, config) {
         const nodeCtx = { ...ctx, depth: depth };
 
         if (node.type === 'Choice') {
-            // Choice nodes handle their own children inline via formatChoiceNode
+            // Choice nodes handle their own children inline via formatChoiceNode.
+            // Per-option MED mutations are emitted inside formatChoiceNode's subtree walk.
+            // Do NOT call formatMedNode on the Choice node itself here — mutations and
+            // conditional blocks are per-option scoped.
             const result = formatNode(node, nodeCtx);
             lines.push(...result);
-            // Append MED-specific lines (mutations, conditional blocks) AFTER base output
-            if (medDetected) {
-                const medLines = formatMedNode(node, nodeCtx);
-                lines.push(...medLines);
-            }
         } else if (node.type === 'Entry') {
             // Entry nodes emit cue + body, then walk children at depth 0
             const result = formatNode(node, { ...nodeCtx, depth: 0 });

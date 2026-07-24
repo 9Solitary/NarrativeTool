@@ -15,8 +15,9 @@ const GOLDEN_DIR = join(__dirname, 'golden');
 // -------------------------------------------------------------------------
 
 describe('Dialogue Export - Base DM', () => {
+  // Exclude MED-specific fixtures — they are tested separately with medEnabled: true
   const fixtures = readdirSync(FIXTURES_DIR)
-    .filter(f => f.endsWith('.ncanvas') && !f.startsWith('.'));
+    .filter(f => f.endsWith('.ncanvas') && !f.startsWith('.') && !f.startsWith('med-'));
 
   for (const fixture of fixtures) {
     const name = basename(fixture, '.ncanvas');

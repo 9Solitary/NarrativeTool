@@ -177,7 +177,8 @@ function formatMedNode(node, ctx) {
 // -------------------------------------------------------------------------
 
 /**
- * Emit state mutation lines for a node's choiceOptions effects.
+ * Format mutation lines for a single effect array (e.g., from one choice option).
+ * Used by formatChoiceNode to emit per-option mutations inline under target content.
  *
  * Processes:
  *   - op: "set_flag"  → do set_flag <key> <value>
@@ -186,6 +187,47 @@ function formatMedNode(node, ctx) {
  *
  * Key names have flag_/res_ prefixes stripped for MED output.
  * Unknown ops are silently skipped (T-02-05 mitigation).
+ *
+ * @param {Array<Object>} effects - Array of effect objects with op, key, value
+ * @param {number} depth - Current indentation depth
+ * @returns {Array<string>} Mutation lines
+ */
+function formatMutationsForEffects(effects, depth) {
+    if (!Array.isArray(effects)) return [];
+    const lines = [];
+    const d = depth || 0;
+
+    for (const effect of effects) {
+        if (!effect || !effect.op) continue;
+
+        const cleanKey = stripStatePrefix(effect.key || '');
+
+        switch (effect.op) {
+            case 'set_flag':
+                lines.push(indent(d) +
+                    MED_TOKENS.SET_FLAG + ' ' + cleanKey + ' ' + (effect.value !== undefined ? effect.value : ''));
+                break;
+
+            case 'add_res':
+                lines.push(indent(d) +
+                    MED_TOKENS.ADD_RES + ' ' + cleanKey + ' ' + (effect.value !== undefined ? effect.value : ''));
+                break;
+
+            case 'subtract':
+                lines.push(indent(d) +
+                    MED_TOKENS.ADD_RES + ' ' + cleanKey + ' -' + (effect.value !== undefined ? effect.value : '0'));
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    return lines;
+}
+
+/**
+ * Emit state mutation lines for a node's choiceOptions effects (all options merged).
  *
  * @param {Object} node - The .ncanvas node object
  * @param {number} depth - Current indentation depth
@@ -198,37 +240,7 @@ function emitMutations(node, depth) {
     if (Array.isArray(node.choiceOptions)) {
         for (const opt of node.choiceOptions) {
             if (!opt || !Array.isArray(opt.effects)) continue;
-
-            for (const effect of opt.effects) {
-                if (!effect || !effect.op) continue;
-
-                const cleanKey = stripStatePrefix(effect.key || '');
-
-                switch (effect.op) {
-                    case 'set_flag':
-                        lines.push(indent(depth) +
-                            MED_TOKENS.SET_FLAG + ' ' + cleanKey + ' ' + (effect.value !== undefined ? effect.value : ''));
-                        break;
-
-                    case 'add_res':
-                        lines.push(indent(depth) +
-                            MED_TOKENS.ADD_RES + ' ' + cleanKey + ' ' + (effect.value !== undefined ? effect.value : ''));
-                        break;
-
-                    case 'subtract':
-                        // Subtract is emitted as add_res with a negative value
-                        lines.push(indent(depth) +
-                            MED_TOKENS.ADD_RES + ' ' + cleanKey + ' -' + (effect.value !== undefined ? effect.value : '0'));
-                        break;
-
-                    default:
-                        // T-02-05: Unknown ops are logged and skipped
-                        if (KNOWN_MUTATION_OPS.has(effect.op)) {
-                            // Shouldn't happen since we only switch on known ops, but safety
-                        }
-                        break;
-                }
-            }
+            lines.push(...formatMutationsForEffects(opt.effects, depth));
         }
     }
 
@@ -369,5 +381,6 @@ function emitConditionalBlocks(node, depth) {
 module.exports = {
     detectMedState,
     formatMedHeader,
-    formatMedNode
+    formatMedNode,
+    formatMutationsForEffects
 };
