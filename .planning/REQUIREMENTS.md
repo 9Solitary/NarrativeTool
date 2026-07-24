@@ -38,16 +38,16 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Character & Entity
 
-- [ ] **ENT-01**: Character Markdown 模板 — 符合 Narrative Canvas 导出格式的模板
-- [ ] **ENT-02**: Location Markdown 模板 — 地点实体定义
-- [ ] **ENT-03**: Quest Markdown 模板 — 任务实体定义
-- [ ] **ENT-04**: Item Markdown 模板 — 道具实体定义
-- [ ] **ENT-05**: 实体在 Obsidian Graph View 中正确索引和显示
+- [x] **ENT-01**: Character Markdown 模板 — 符合 Narrative Canvas 导出格式的模板
+- [x] **ENT-02**: Location Markdown 模板 — 地点实体定义
+- [x] **ENT-03**: Quest Markdown 模板 — 任务实体定义
+- [x] **ENT-04**: Item Markdown 模板 — 道具实体定义
+- [x] **ENT-05**: 实体在 Obsidian Graph View 中正确索引和显示
 
 ### Flow Tools
 
-- [ ] **FLW-01**: 从模板快速创建 Flow Canvas（章节/任务/世界事件模板）
-- [ ] **FLW-02**: 从模板创建 Flow Fragment Canvas（局部流程模板）
+- [x] **FLW-01**: 从模板快速创建 Flow Canvas（章节/任务/世界事件模板）
+- [x] **FLW-02**: 从模板创建 Flow Fragment Canvas（局部流程模板）
 - [ ] **FLW-03**: Canvas 节点类型识别 — 区分 `.ncanvas`、`.md`(Character/Location/Quest) 节点并在 Canvas 中显示对应样式
 - [ ] **FLW-04**: Flow → Dialogue 导航 — 在 Canvas 中点击 `.ncanvas` 节点打开 Narrative Canvas 编辑器
 - [ ] **FLW-05**: Dialogue → Flow 导航 — 在 Narrative Canvas 中点击引用节点跳回 Flow Canvas
@@ -124,13 +124,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MED-06 | Phase 2 | Complete |
 | MED-07 | Phase 2 | Complete |
 | MED-08 | Phase 2 | Complete |
-| ENT-01 | Phase 3 | Pending |
-| ENT-02 | Phase 3 | Pending |
-| ENT-03 | Phase 3 | Pending |
-| ENT-04 | Phase 3 | Pending |
-| ENT-05 | Phase 3 | Pending |
-| FLW-01 | Phase 3 | Pending |
-| FLW-02 | Phase 3 | Pending |
+| ENT-01 | Phase 3 | Complete |
+| ENT-02 | Phase 3 | Complete |
+| ENT-03 | Phase 3 | Complete |
+| ENT-04 | Phase 3 | Complete |
+| ENT-05 | Phase 3 | Complete |
+| FLW-01 | Phase 3 | Complete |
+| FLW-02 | Phase 3 | Complete |
 | FLW-03 | Phase 3 | Pending |
 | FLW-04 | Phase 3 | Pending |
 | FLW-05 | Phase 3 | Pending |

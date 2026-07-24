@@ -79,8 +79,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Entity Markdown template generators (Character/Location/Quest/Item) with TDD golden file tests
-- [ ] 03-02-PLAN.md -- Flow Canvas and Flow Fragment .canvas JSON templates + canvas-utils.js tools
+- [x] 03-01-PLAN.md -- Entity Markdown template generators (Character/Location/Quest/Item) with TDD golden file tests
+- [x] 03-02-PLAN.md -- Flow Canvas and Flow Fragment .canvas JSON templates + canvas-utils.js tools
 - [ ] 03-03-PLAN.md -- Flow Tools plugin integration (commands, file-menu hooks, CSS node type distinction, bidirectional navigation)
 **UI hint**: yes
 
@@ -107,7 +107,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Project Foundation | 3/3 | Complete | 2026-07-24 |
 | 2. Dialogue Export | 3/3 | Complete | 2026-07-24 |
-| 3. Entities + Flow Tools | 0/3 | Planned — 3 plans created | - |
+| 3. Entities + Flow Tools | 2/3 | In Progress|  |
 | 4. Narrative Project | 0/? | Not started | - |
 
 ---

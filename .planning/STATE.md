@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-07-24T03:25:58Z"
+last_updated: "2026-07-24T04:22:57.676Z"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_phases: 2
+  total_plans: 9
+  completed_plans: 8
+  percent: 50
 ---
 
 # Project State: Obsidian Narrative Toolchain
@@ -23,16 +23,16 @@ progress:
 
 **What This Is:** A suite of Obsidian plugins enabling game narrative designers to organize worldbuilding, design chapter/quest flow, edit dialogue, and export directly to Godot Dialogue Manager format -- approaching Articy:draft narrative design capability within Obsidian.
 
-**Current Focus:** Phase 2 -- Dialogue Export. Plans 02-01 and 02-02 complete. Plan 02-03 pending.
+**Current Focus:** Phase 3 -- Entities + Flow Tools. Plan 03-01 and 03-02 complete. Plan 03-03 pending.
 
 ## Current Position
 
 | Attribute | Value |
 |-----------|-------|
-| Phase | 2 - Dialogue Export |
-| Plans | 2 complete of 3 total (Phase 2) |
-| Status | Plan 02-02 complete -- MED state extensions implemented |
-| Progress | ███████████░ 6/7 total plans, 1/4 phases complete |
+| Phase | 3 - Entities + Flow Tools |
+| Plans | 2 complete of 3 total (Phase 3) |
+| Status | Plan 03-02 complete -- Canvas templates (Flow Canvas + Flow Fragment) |
+| Progress | ████████████ 8/9 total plans, 2/4 phases complete |
 
 ## Performance Metrics
 
@@ -55,6 +55,11 @@ progress:
 - File-based inter-plugin communication (primary), global bridge (selective)
 - Pure JavaScript, esbuild bundling, node:test for validation
 - Shared modules in `shared/` directory, copied/bundled per-plugin
+- Canvas node ID: 16-char hex lowercase via crypto.randomBytes(8).toString('hex')
+- Canvas edge ID: edge-NNNNNNNNNNNN prefix to avoid collision with node IDs
+- Canvas templates accept optional idGenerator for test determinism (golden file testing)
+- Canvas JSON uses tab indentation to match Obsidian native format
+- addNodeToCanvas preserves unknown fields via spread pattern
 
 ### Open Questions
 
@@ -72,23 +77,25 @@ progress:
 - [x] Execute Plan 02-01: Export engine core + base Godot DM syntax formatter
 - [x] Execute Plan 02-02: MED state extension formatter (38 tests)
 - [x] Execute Plan 02-03: Plugin integration (Obsidian command, 157 total tests, 0 failures)
+- [x] Execute Plan 03-01: Entity Markdown templates (Character, Location, Quest, Item)
+- [x] Execute Plan 03-02: Canvas templates (Flow Canvas + Flow Fragment) — 12 tests, 0 failures
 
 ### Blockers
 
 - None
-- Phase 2 complete. Ready for Phase 3: Entities + Flow.
+- Phase 3 Plan 03-01 and 03-02 complete. Ready for Plan 03-03: Flow Tools plugin integration.
 
 ## Session Continuity
 
 ### Last Session
 
 - **Date:** 2026-07-24
-- **Action:** Executed Plan 02-03 (Plugin Integration) — final Phase 2 plan
-- **Outcome:** 3 commits. main.js wired with real exportCurrentDialogue() command. export-plugin.test.js (14 tests) and updated export.test.js master suite. Full suite: 157 tests, 0 failures across all 40 suites. esbuild build: 10KB minified CJS.
+- **Action:** Executed Plan 03-02 (Canvas Templates) — Flow Canvas and Flow Fragment .canvas JSON templates
+- **Outcome:** 2 commits. canvas-utils.js (generateNodeId, createCanvas, addNodeToCanvas, addDialogueNodeToCanvas) and canvas-templates.js (createFlowCanvas, createFlowFragment). 5 golden files. 12 tests, 0 failures. TDD RED/GREEN cycle complete.
 
 ### Next Steps
 
-1. Phase 3: Entities + Flow (entity framework, file watchers, auto-export)
+1. Phase 3 Plan 03-03: Flow Tools plugin integration (Obsidian commands, file-menu, navigation)
 2. Phase 4: Narrative Project (reference validation, cross-file entity management)
 
 ---
