@@ -90,6 +90,59 @@ class Plugin {
     registerEvent(eventRef) {
         // no-op stub
     }
+
+    addStatusBarItem() {
+        // Returns a mock HTMLElement with in-memory state for testing StatusBarManager.
+        // Supports: innerHTML, addClass, removeClass (via classList Set), remove, className.
+        const el = {
+            _classSet: new Set(),
+            innerHTML: '',
+            className: '',
+
+            addClass(cls) {
+                this._classSet.add(cls);
+                this._syncClassName();
+                return this;
+            },
+
+            removeClass(cls) {
+                this._classSet.delete(cls);
+                this._syncClassName();
+                return this;
+            },
+
+            _syncClassName() {
+                this.className = Array.from(this._classSet).join(' ');
+            },
+
+            remove() {
+                this._removed = true;
+            },
+
+            setCssProps(_props) {},
+            setText(_text) {},
+
+            // DOM query support (for tests that check child content)
+            createEl(tag, opts) {
+                const child = {
+                    tag: tag,
+                    innerHTML: '',
+                    className: '',
+                    _classSet: new Set(),
+                    addClass(cls) { this._classSet.add(cls); this._syncClassName(); return this; },
+                    removeClass(cls) { this._classSet.delete(cls); this._syncClassName(); return this; },
+                    _syncClassName() { this.className = Array.from(this._classSet).join(' '); },
+                    setText(text) { this.textContent = text; return this; },
+                    textContent: '',
+                    querySelector(sel) { return null; },
+                    remove() { this._removed = true; }
+                };
+                if (opts && opts.text) child.textContent = opts.text;
+                return child;
+            }
+        };
+        return el;
+    }
 }
 
 module.exports = { Plugin, PluginSettingTab, Setting };
