@@ -1,0 +1,23 @@
+/* Narrative Project — Settings Tab Styles
+ *
+ * Minimal styles for the settings UI. The tab primarily uses Obsidian's
+ * native Setting component rendering; these rules extend it for layout
+ * consistency and declare CSS variables for future status-bar use.
+ */
+
+/* Settings tab text inputs: minimum width for readability */
+.narrative-project-setting-item input[type="text"] {
+    min-width: 300px;
+}
+
+/* Settings tab container: match Obsidian native settings padding */
+.narrative-project-setting-item {
+    padding: 0 16px;
+}
+
+/* Export status CSS variables (placeholder for 04-02 status bar) */
+:root {
+    --nt-export-pending: var(--text-muted);
+    --nt-export-success: var(--color-green);
+    --nt-export-failure: var(--color-red);
+}
