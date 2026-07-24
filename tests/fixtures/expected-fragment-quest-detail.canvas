@@ -1,0 +1,83 @@
+{
+	"nodes": [
+		{
+			"id": "0000000000000001",
+			"type": "text",
+			"x": 0,
+			"y": 0,
+			"width": 280,
+			"height": 80,
+			"text": "**Quest Step**\nSearch cave",
+			"color": "1"
+		},
+		{
+			"id": "0000000000000002",
+			"type": "file",
+			"file": "Dialogues/cave-search.ncanvas",
+			"x": 0,
+			"y": 130,
+			"width": 300,
+			"height": 200
+		},
+		{
+			"id": "0000000000000003",
+			"type": "text",
+			"x": 350,
+			"y": 50,
+			"width": 230,
+			"height": 60,
+			"text": "**Branch A**\nFound key",
+			"color": "5"
+		},
+		{
+			"id": "0000000000000004",
+			"type": "text",
+			"x": 350,
+			"y": 200,
+			"width": 230,
+			"height": 60,
+			"text": "**Branch B**\nKey not here",
+			"color": "5"
+		},
+		{
+			"id": "0000000000000005",
+			"type": "text",
+			"x": -350,
+			"y": 130,
+			"width": 260,
+			"height": 60,
+			"text": "**Condition**\nPerception >= 10",
+			"color": "6"
+		}
+	],
+	"edges": [
+		{
+			"id": "edge-000000000001",
+			"fromNode": "0000000000000001",
+			"toNode": "0000000000000002",
+			"fromSide": "bottom",
+			"toSide": "top"
+		},
+		{
+			"id": "edge-000000000002",
+			"fromNode": "0000000000000002",
+			"toNode": "0000000000000003",
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "edge-000000000003",
+			"fromNode": "0000000000000002",
+			"toNode": "0000000000000004",
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "edge-000000000004",
+			"fromNode": "0000000000000005",
+			"toNode": "0000000000000002",
+			"fromSide": "right",
+			"toSide": "left"
+		}
+	]
+}

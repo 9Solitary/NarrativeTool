@@ -1,0 +1,86 @@
+{
+	"nodes": [
+		{
+			"id": "0000000000000001",
+			"type": "text",
+			"x": 0,
+			"y": 0,
+			"width": 300,
+			"height": 80,
+			"text": "**Quest: Find Key**",
+			"color": "1"
+		},
+		{
+			"id": "0000000000000002",
+			"type": "file",
+			"file": "Characters/elder.md",
+			"x": 0,
+			"y": 130,
+			"width": 250,
+			"height": 150
+		},
+		{
+			"id": "0000000000000003",
+			"type": "text",
+			"x": 350,
+			"y": 0,
+			"width": 250,
+			"height": 60,
+			"text": "**Stage 1**\nTalk to elder",
+			"color": "5"
+		},
+		{
+			"id": "0000000000000004",
+			"type": "text",
+			"x": 350,
+			"y": 100,
+			"width": 250,
+			"height": 60,
+			"text": "**Stage 2**\nSearch cave",
+			"color": "5"
+		},
+		{
+			"id": "0000000000000005",
+			"type": "text",
+			"x": 350,
+			"y": 200,
+			"width": 250,
+			"height": 60,
+			"text": "**Stage 3**\nReturn key",
+			"color": "5"
+		},
+		{
+			"id": "0000000000000006",
+			"type": "text",
+			"x": 0,
+			"y": 330,
+			"width": 250,
+			"height": 60,
+			"text": "**Reward**\nGold + XP",
+			"color": "4"
+		}
+	],
+	"edges": [
+		{
+			"id": "edge-000000000001",
+			"fromNode": "0000000000000002",
+			"toNode": "0000000000000003",
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "edge-000000000002",
+			"fromNode": "0000000000000003",
+			"toNode": "0000000000000004",
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "edge-000000000003",
+			"fromNode": "0000000000000004",
+			"toNode": "0000000000000005",
+			"fromSide": "right",
+			"toSide": "left"
+		}
+	]
+}
