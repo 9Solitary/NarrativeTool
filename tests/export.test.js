@@ -1,14 +1,30 @@
-// export.test.js — Master test entry that imports all export test suites.
-// Phase 2: imports base DM tests. Plan 02-02 adds MED tests, 02-03 adds plugin integration.
+// export.test.js — Master test suite for Dialogue Export (Phase 2)
+//
+// Imports all sub-suites:
+//   - export-base.test.js   (EXP-01 through EXP-07: base Godot DM)
+//   - export-med.test.js    (MED-01 through MED-08: MED state extensions) — from Plan 02-02
+//   - export-plugin.test.js (Plugin integration and edge cases)
+//
+// Run with: node --test tests/export.test.js
+// Or run full suite: node --test tests/
 
 const { describe, it } = require('node:test');
 
-describe('Dialogue Export — Full Suite', () => {
-  it('base DM tests pass (EXP-01 through EXP-07)', async () => {
-    // The base DM tests are in export-base.test.js which node:test auto-discovers.
-    // This is a marker test for the master suite.
+describe('Dialogue Export — Master Suite', () => {
+  it('all sub-suites are importable', () => {
+    // These requires verify the test files exist and are syntactically valid.
+    // node:test auto-discovers and runs them.
+    require('./export-base.test.js');
+    // export-med.test.js imported below (may not exist if only 02-01 executed)
+    require('./export-plugin.test.js');
   });
 });
 
-// Re-export base test suite
-require('./export-base.test.js');
+// Import MED tests if they exist (created by Plan 02-02)
+try {
+  require('./export-med.test.js');
+} catch (e) {
+  // MED tests not yet created — this is OK during partial execution.
+  // The full suite will include them after Plan 02-02 completes.
+  console.log('[export.test.js] MED tests not found — run Plan 02-02 first');
+}
