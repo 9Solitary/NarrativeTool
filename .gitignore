@@ -1,0 +1,11 @@
+.planning/
+
+# Plugin build outputs -- never commit built main.js
+plugins/*/main.js
+plugins/*/main.js.map
+
+# Per-plugin npm dependencies
+plugins/*/node_modules/
+
+# Obsidian plugin local data
+data.json
