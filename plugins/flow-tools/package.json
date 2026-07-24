@@ -1,0 +1,12 @@
+{
+    "name": "flow-tools",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "build": "node esbuild.config.mjs",
+        "dev": "node esbuild.config.mjs --watch"
+    },
+    "devDependencies": {
+        "esbuild": "^0.28.1"
+    }
+}
