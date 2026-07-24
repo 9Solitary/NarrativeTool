@@ -1,0 +1,11 @@
+using S
+
+~ start
+Your coins: {{res(&"coins")}}.
+Bribe check: The guard eyes you. Coins: {{res(&"coins")}}.
+- Slip two coins [if res_coins >= 2 /]
+	Coins after: {{res(&"coins")}}.
+	do add_res coins -2
+	do set_flag watch_missing false
+- Keep moving
+	You walk past the guard.

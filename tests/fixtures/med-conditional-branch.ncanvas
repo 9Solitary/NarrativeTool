@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "savedAt": "2026-07-24T00:00:00.000Z",
+  "project": {
+    "title": "MED Conditional Branch",
+    "notes": "Tests conditional branching with requires conditions on choice options.",
+    "variables": {
+      "flag_has_key": true,
+      "res_coins": 5
+    },
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "Entry",
+        "title": "Start",
+        "body": "",
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "n1",
+        "type": "Choice",
+        "title": "Gatekeeper",
+        "body": "The gatekeeper blocks your path. Coins: {res_coins}.",
+        "choices": ["Bribe the gatekeeper", "Show your key", "Walk away"],
+        "choiceOptions": [
+          {
+            "id": "opt_bribe",
+            "label": "Bribe the gatekeeper",
+            "requires": "res_coins >= 5",
+            "effects": [
+              { "trigger": "onChoose", "op": "subtract", "key": "res_coins", "value": "5" }
+            ]
+          },
+          {
+            "id": "opt_key",
+            "label": "Show your key",
+            "requires": "flag_has_key == true",
+            "effects": []
+          },
+          {
+            "id": "opt_walk",
+            "label": "Walk away",
+            "requires": "",
+            "effects": []
+          }
+        ],
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "n2",
+        "type": "Content",
+        "title": "Bribe success",
+        "body": "The gatekeeper takes your coins and steps aside.",
+        "x": 560,
+        "y": 20
+      },
+      {
+        "id": "n3",
+        "type": "Content",
+        "title": "Key success",
+        "body": "The gatekeeper nods and unlocks the gate.",
+        "x": 560,
+        "y": 160
+      },
+      {
+        "id": "n4",
+        "type": "Content",
+        "title": "Walk away",
+        "body": "You turn back the way you came.",
+        "x": 560,
+        "y": 300
+      }
+    ],
+    "links": [
+      { "id": "l0", "from": "n0", "to": "n1" },
+      { "id": "l1", "from": "n1", "to": "n2", "label": "Bribe the gatekeeper", "choiceIndex": 0, "choiceOptionId": "opt_bribe" },
+      { "id": "l2", "from": "n1", "to": "n3", "label": "Show your key", "choiceIndex": 1, "choiceOptionId": "opt_key" },
+      { "id": "l3", "from": "n1", "to": "n4", "label": "Walk away", "choiceIndex": 2, "choiceOptionId": "opt_walk" }
+    ]
+  },
+  "ui": { "activeFileId": "med" }
+}

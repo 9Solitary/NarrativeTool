@@ -1,0 +1,8 @@
+using S
+
+~ start
+Guard: [#check=flag:has_key:true] Halt! Show your papers.
+Guard: I sense [term=old_reyes] Old Reyes is nearby.
+~ strength_check
+The guard tests your strength.
+Guard: Strength: {{res(&"strength")}}.

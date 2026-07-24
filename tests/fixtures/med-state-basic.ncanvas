@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "savedAt": "2026-07-24T00:00:00.000Z",
+  "project": {
+    "title": "MED State Basic",
+    "notes": "Tests using S, set_flag, add_res, and inline state display.",
+    "variables": {
+      "res_coins": 3,
+      "flag_watch_missing": true,
+      "flag_boarding_denied": false
+    },
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "Entry",
+        "title": "Start",
+        "body": "Your coins: {res_coins}.",
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "n1",
+        "type": "Choice",
+        "title": "Bribe check",
+        "body": "The guard eyes you. Coins: {res_coins}.",
+        "choices": ["Slip two coins", "Keep moving"],
+        "choiceOptions": [
+          {
+            "id": "opt_bribe",
+            "label": "Slip two coins",
+            "requires": "res_coins >= 2",
+            "effects": [
+              { "trigger": "onChoose", "op": "subtract", "key": "res_coins", "value": "2" },
+              { "trigger": "onChoose", "op": "set_flag", "key": "flag_watch_missing", "value": "false" }
+            ]
+          },
+          {
+            "id": "opt_keep",
+            "label": "Keep moving",
+            "requires": "",
+            "effects": []
+          }
+        ],
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "n2",
+        "type": "Content",
+        "title": "Bribe accepted",
+        "body": "Coins after: {res_coins}.",
+        "x": 560,
+        "y": 80
+      },
+      {
+        "id": "n3",
+        "type": "Content",
+        "title": "Walk away",
+        "body": "You walk past the guard.",
+        "x": 560,
+        "y": 200
+      }
+    ],
+    "links": [
+      { "id": "l0", "from": "n0", "to": "n1" },
+      { "id": "l1", "from": "n1", "to": "n2", "label": "Slip two coins", "choiceIndex": 0, "choiceOptionId": "opt_bribe" },
+      { "id": "l2", "from": "n1", "to": "n3", "label": "Keep moving", "choiceIndex": 1, "choiceOptionId": "opt_keep" }
+    ]
+  },
+  "ui": { "activeFileId": "med" }
+}
