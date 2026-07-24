@@ -9,6 +9,8 @@ const { Plugin } = require('obsidian');
 const { DEFAULT_SETTINGS, NarrativeProjectSettingTab } = require('./settings');
 const { StatusBarManager } = require('./status-bar');
 const { exportAllDialogues } = require('./batch-export');
+const { setupAutoExport, teardownAutoExport } = require('./auto-export');
+const { validateReferences } = require('./reference-validator');
 
 module.exports = class NarrativeProjectPlugin extends Plugin {
     async onload() {
@@ -28,6 +30,58 @@ module.exports = class NarrativeProjectPlugin extends Plugin {
             callback: () => this.batchExportAllDialogues()
         });
 
+        // 5. Install auto-export listener: debounced .ncanvas → .dialogue on save
+        setupAutoExport(this, (results) => {
+            const successCount = results.filter(r => r.success).length;
+            const failCount = results.filter(r => !r.success).length;
+            if (successCount > 0 && failCount === 0) {
+                this.statusBar.setState('success', { exported: successCount, failed: 0 });
+                // Auto-revert to pending after 5 seconds
+                if (this._autoExportTimeout) clearTimeout(this._autoExportTimeout);
+                this._autoExportTimeout = setTimeout(() => {
+                    this.statusBar.setState('pending');
+                }, 5000);
+            } else if (failCount > 0) {
+                this.statusBar.setState('failure', { message: `${failCount} auto-export failed` });
+            }
+        });
+
+        // 6. Register the "Validate Flow→Dialogue references" command
+        this.addCommand({
+            id: 'validate-references',
+            name: 'Validate Flow→Dialogue references',
+            callback: () => this.runReferenceValidation()
+        });
+
+        // 7. Register the "Export Current Dialogue" single-file export command
+        this.addCommand({
+            id: 'export-current-dialogue',
+            name: 'Export current .ncanvas dialogue',
+            callback: async () => {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (!activeFile || activeFile.extension !== 'ncanvas') {
+                    const { Notice } = require('obsidian');
+                    new Notice('[NP] Open a .ncanvas file first');
+                    return;
+                }
+                this.statusBar.setState('exporting', { count: 1 });
+                const { exportSingleFile } = require('./auto-export');
+                const result = await exportSingleFile(
+                    this.app, activeFile, this.settings.exportPath, this.settings.medEnabled
+                );
+                if (result.success) {
+                    this.statusBar.setState('success', { exported: 1, failed: 0 });
+                    const { Notice } = require('obsidian');
+                    new Notice(`[NP] Exported: ${activeFile.basename}`);
+                    setTimeout(() => this.statusBar.setState('pending'), 5000);
+                } else {
+                    this.statusBar.setState('failure', { message: result.error });
+                    const { Notice } = require('obsidian');
+                    new Notice(`[NP] Export failed: ${result.error}`);
+                }
+            }
+        });
+
         console.log('[Narrative Project] loaded with settings:', this.settings);
     }
 
@@ -37,7 +91,7 @@ module.exports = class NarrativeProjectPlugin extends Plugin {
 
     /**
      * Execute a batch export of all .ncanvas files in the configured scope.
-     * Updates the status bar through pending -> exporting -> success/failure.
+     * Updates the status bar through exporting -> success/failure -> pending (5s).
      */
     async batchExportAllDialogues() {
         const { exportPath, exportScope, medEnabled } = this.settings;
@@ -53,6 +107,9 @@ module.exports = class NarrativeProjectPlugin extends Plugin {
             // Update status bar with result
             this.statusBar.setState('success', result);
 
+            // Auto-revert to pending after 5 seconds
+            setTimeout(() => this.statusBar.setState('pending'), 5000);
+
             // Show ephemeral notification for summary
             const { Notice } = require('obsidian');
             new Notice(`[NP] ${result.exported} exported, ${result.failed} failed`);
@@ -66,7 +123,37 @@ module.exports = class NarrativeProjectPlugin extends Plugin {
         }
     }
 
+    /**
+     * Run the Flow→Dialogue reference integrity check.
+     * Scans all .canvas files for .ncanvas file references and reports
+     * broken links via status bar, notification, and console.warn.
+     */
+    async runReferenceValidation() {
+        this.statusBar.setState('exporting');
+        try {
+            const result = await validateReferences(this.app);
+            if (result.brokenRefs === 0) {
+                this.statusBar.setState('success', { exported: result.totalRefs, failed: 0 });
+                const { Notice } = require('obsidian');
+                new Notice(`[NP] All ${result.totalRefs} references valid`);
+                // Auto-revert to pending after 5 seconds
+                setTimeout(() => this.statusBar.setState('pending'), 5000);
+            } else {
+                this.statusBar.setState('failure', { message: `${result.brokenRefs} broken refs` });
+                const { Notice } = require('obsidian');
+                new Notice(`[NP] ${result.brokenRefs} broken references found. See console for details.`);
+                console.warn('[NP] Broken Flow→Dialogue references:', result.details);
+            }
+        } catch (err) {
+            this.statusBar.setState('failure', { message: 'Reference check failed' });
+            const { Notice } = require('obsidian');
+            new Notice(`[NP] Reference validation failed: ${err.message}`);
+        }
+    }
+
     async onunload() {
+        teardownAutoExport(this);
+        if (this._autoExportTimeout) clearTimeout(this._autoExportTimeout);
         if (this.statusBar) {
             this.statusBar.destroy();
         }
