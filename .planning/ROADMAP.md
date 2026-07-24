@@ -98,7 +98,12 @@ Plans:
   4. Designer's Flow Canvas references a .ncanvas file that was renamed or deleted -- the status bar shows a warning icon with the count of broken references, and the affected Flow node displays a visible indicator of the broken link
   5. Designer views the Obsidian status bar during any export operation -- the indicator cycles through pending, exporting (with spinner), success (green check), or failure (red X) states
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md -- Project settings tab (PRJ-01): Export Path, MED toggle, Export Scope
+- [ ] 04-02-PLAN.md -- Batch export command + status bar (PRJ-02, PRJ-04): exportAllDialogues, StatusBarManager with pending/exporting/success/failure states
+- [ ] 04-03-PLAN.md -- Auto-export on save + reference validation (PRJ-03, PRJ-05): vault.on('modify') debounced listener, validateReferences cross-file checker
 **UI hint**: yes
 
 ## Progress
@@ -108,8 +113,8 @@ Plans:
 | 1. Project Foundation | 3/3 | Complete | 2026-07-24 |
 | 2. Dialogue Export | 3/3 | Complete | 2026-07-24 |
 | 3. Entities + Flow Tools | 2/3 | In Progress|  |
-| 4. Narrative Project | 0/? | Not started | - |
+| 4. Narrative Project | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-07-23*
-*Last updated: 2026-07-24 — Phase 3 plans created (3 plans, 2 waves)*
+*Last updated: 2026-07-24 — Phase 4 plans created (3 plans, 3 waves)*
