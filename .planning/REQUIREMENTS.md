@@ -17,13 +17,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Dialogue Export — Core Engine
 
-- [ ] **EXP-01**: 单个 `.ncanvas` 文件导出为 `.dialogue`，兼容 Godot Dialogue Manager 基础语法
-- [ ] **EXP-02**: 角色名映射 — `.ncanvas` 中的角色名正确输出为 `Character: text` 格式
-- [ ] **EXP-03**: 对话选项导出 — Narrative Canvas 分支选项输出为 `- option text` 格式
-- [ ] **EXP-04**: 嵌套分支导出 — 多层级嵌套选项正确输出缩进结构
-- [ ] **EXP-05**: Cue/Jump 映射 — Narrative Canvas 节点跳转映射为 `~ cue` 和 `=> jump` 语法
-- [ ] **EXP-06**: Tags 导出 — Narrative Canvas 节点 tag 导出为 `[#tag]` 格式
-- [ ] **EXP-07**: BBCode 透传 — Narrative Canvas 中的 BBCode 标记保留在导出文本中
+- [x] **EXP-01**: 单个 `.ncanvas` 文件导出为 `.dialogue`，兼容 Godot Dialogue Manager 基础语法
+- [x] **EXP-02**: 角色名映射 — `.ncanvas` 中的角色名正确输出为 `Character: text` 格式
+- [x] **EXP-03**: 对话选项导出 — Narrative Canvas 分支选项输出为 `- option text` 格式
+- [x] **EXP-04**: 嵌套分支导出 — 多层级嵌套选项正确输出缩进结构
+- [x] **EXP-05**: Cue/Jump 映射 — Narrative Canvas 节点跳转映射为 `~ cue` 和 `=> jump` 语法
+- [x] **EXP-06**: Tags 导出 — Narrative Canvas 节点 tag 导出为 `[#tag]` 格式
+- [x] **EXP-07**: BBCode 透传 — Narrative Canvas 中的 BBCode 标记保留在导出文本中
 
 ### Dialogue Export — MED Extensions
 
@@ -109,13 +109,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-03 | Phase 1 | Complete |
 | FND-04 | Phase 1 | Complete |
 | FND-05 | Phase 1 | Complete |
-| EXP-01 | Phase 2 | Pending |
-| EXP-02 | Phase 2 | Pending |
-| EXP-03 | Phase 2 | Pending |
-| EXP-04 | Phase 2 | Pending |
-| EXP-05 | Phase 2 | Pending |
-| EXP-06 | Phase 2 | Pending |
-| EXP-07 | Phase 2 | Pending |
+| EXP-01 | Phase 2 | Complete |
+| EXP-02 | Phase 2 | Complete |
+| EXP-03 | Phase 2 | Complete |
+| EXP-04 | Phase 2 | Complete |
+| EXP-05 | Phase 2 | Complete |
+| EXP-06 | Phase 2 | Complete |
+| EXP-07 | Phase 2 | Complete |
 | MED-01 | Phase 2 | Pending |
 | MED-02 | Phase 2 | Pending |
 | MED-03 | Phase 2 | Pending |

@@ -53,7 +53,12 @@ Plans:
   4. Designer's dialogue with multi-level nested conditional branches exports all nesting levels as correctly indented `[if condition]` ... `[else]` ... `[/if]` blocks
   5. Designer's dialogue containing inline state display expressions (`{{res(&"id")}}`) and direct check cues (`~ direct_check`) exports with correct MED syntax in the appropriate positions
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [x] 02-01-PLAN.md -- Export engine core + Godot DM base syntax formatter (EXP-01~07)
+- [ ] 02-02-PLAN.md -- MED state extension formatter (MED-01~08)
+- [ ] 02-03-PLAN.md -- Plugin integration, edge cases, and full test pass
 
 ### Phase 3: Entities + Flow Tools
 **Goal**: Narrative designers can create structured Character, Location, Quest, and Item entities from templates, build Flow and Flow Fragment canvases from templates, visually distinguish entity node types in Canvas, and navigate bidirectionally between Flow canvases and Narrative Canvas dialogue files.
@@ -96,9 +101,10 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Project Foundation | 3/3 | Complete | 2026-07-24 |
-| 2. Dialogue Export | 0/? | Not started | - |
+| 2. Dialogue Export | 1/3 | In Progress | - |
 | 3. Entities + Flow Tools | 0/? | Not started | - |
 | 4. Narrative Project | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-07-23*
+*Last updated: 2026-07-24 — Plan 02-01 complete (export engine core + base DM syntax)*
