@@ -1,16 +1,43 @@
 // settings.test.js -- NarrativeProjectSettingTab unit tests
 //
 // Validates DEFAULT_SETTINGS constants and NarrativeProjectSettingTab
-// class structure. Tests are pure unit tests that run without Obsidian.
+// class structure. Tests are pure unit tests that run without Obsidian
+// by intercepting the 'obsidian' require via Module._resolveFilename.
 //
 // 04-01: Settings Tab implementation
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const path = require('node:path');
+const Module = require('node:module');
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Intercept the 'obsidian' require to provide lightweight mocks.
+//
+// The settings module only needs PluginSettingTab (a base class to extend)
+// and Setting (a UI builder class whose prototype is checked but its
+// instances are created by Obsidian's plugin framework at runtime).
+//
+// We hook Module._resolveFilename to redirect 'obsidian' requests
+// to our mock file at tests/mocks/obsidian.js. All other modules
+// resolve normally via the original resolver.
+// ---------------------------------------------------------------------------
+
+const originalResolveFilename = Module._resolveFilename;
+const MOCK_OBSIDIAN_PATH = path.join(__dirname, 'mocks', 'obsidian.js');
+
+Module._resolveFilename = function (request, parent, isMain, options) {
+    if (request === 'obsidian' || request === 'obsidian/') {
+        // Direct requests for the 'obsidian' module → redirect to mock
+        return MOCK_OBSIDIAN_PATH;
+    }
+    // Delegate all other requests to the original resolver
+    return originalResolveFilename.call(this, request, parent, isMain, options);
+};
+
+// ---------------------------------------------------------------------------
 // Test 1: DEFAULT_SETTINGS structure and defaults
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 describe('DEFAULT_SETTINGS', () => {
   it('contains exportPath, medEnabled, and exportScope keys', () => {
@@ -48,9 +75,9 @@ describe('DEFAULT_SETTINGS', () => {
   });
 });
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Test 2: NarrativeProjectSettingTab class structure
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 describe('NarrativeProjectSettingTab', () => {
   it('is a class/constructor function', () => {
@@ -60,7 +87,6 @@ describe('NarrativeProjectSettingTab', () => {
 
   it('can be instantiated (as a class definition check)', () => {
     const { NarrativeProjectSettingTab } = require('../plugins/narrative-project/src/settings');
-    // Verify the name is correctly set
     assert.ok(NarrativeProjectSettingTab.name === 'NarrativeProjectSettingTab' || NarrativeProjectSettingTab.prototype);
   });
 
@@ -69,19 +95,17 @@ describe('NarrativeProjectSettingTab', () => {
     assert.strictEqual(typeof NarrativeProjectSettingTab.prototype.display, 'function');
   });
 
-  it('display is a generator-like async function (code hygiene)', () => {
+  it('display is defined as an instance method', () => {
     const { NarrativeProjectSettingTab } = require('../plugins/narrative-project/src/settings');
     const fn = NarrativeProjectSettingTab.prototype.display;
-    // display() should be defined as an instance method
     assert.ok(typeof fn === 'function');
-    // Check that it accepts containerEl as first param (Obsidian convention)
     assert.ok(fn.length >= 0, 'display should be callable');
   });
 });
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Test 3: Defaults merge behavior (simulates Obsidian loadData)
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 describe('Settings merge behavior', () => {
   it('Object.assign merge with empty data returns defaults unchanged', () => {
@@ -107,9 +131,9 @@ describe('Settings merge behavior', () => {
   });
 });
 
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Test 4: Module exports shape
-// -------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 describe('settings module exports', () => {
   it('exports DEFAULT_SETTINGS and NarrativeProjectSettingTab', () => {
