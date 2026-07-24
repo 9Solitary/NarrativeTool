@@ -76,7 +76,12 @@ Plans:
   6. Designer is editing a dialogue in Narrative Canvas that was opened from a Flow Canvas -- clicking a reference node (wikilink to the Flow .canvas) opens that Flow Canvas in Obsidian's Canvas view
   7. Designer opens Obsidian Graph View -- Character, Location, Quest, and Item .md files appear as graph nodes with correct link relationships to their referenced .canvas and .ncanvas files
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md -- Entity Markdown template generators (Character/Location/Quest/Item) with TDD golden file tests
+- [ ] 03-02-PLAN.md -- Flow Canvas and Flow Fragment .canvas JSON templates + canvas-utils.js tools
+- [ ] 03-03-PLAN.md -- Flow Tools plugin integration (commands, file-menu hooks, CSS node type distinction, bidirectional navigation)
 **UI hint**: yes
 
 ### Phase 4: Narrative Project
@@ -102,9 +107,9 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Project Foundation | 3/3 | Complete | 2026-07-24 |
 | 2. Dialogue Export | 3/3 | Complete | 2026-07-24 |
-| 3. Entities + Flow Tools | 0/? | Not started | - |
+| 3. Entities + Flow Tools | 0/3 | Planned — 3 plans created | - |
 | 4. Narrative Project | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-07-23*
-*Last updated: 2026-07-24 — Phase 2 complete (all 3 plans: export engine, MED, plugin integration)*
+*Last updated: 2026-07-24 — Phase 3 plans created (3 plans, 2 waves)*
