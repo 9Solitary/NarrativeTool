@@ -48,18 +48,18 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **FLW-01**: 从模板快速创建 Flow Canvas（章节/任务/世界事件模板）
 - [x] **FLW-02**: 从模板创建 Flow Fragment Canvas（局部流程模板）
-- [ ] **FLW-03**: Canvas 节点类型识别 — 区分 `.ncanvas`、`.md`(Character/Location/Quest) 节点并在 Canvas 中显示对应样式
-- [ ] **FLW-04**: Flow → Dialogue 导航 — 在 Canvas 中点击 `.ncanvas` 节点打开 Narrative Canvas 编辑器
-- [ ] **FLW-05**: Dialogue → Flow 导航 — 在 Narrative Canvas 中点击引用节点跳回 Flow Canvas
-- [ ] **FLW-06**: Flow 文件菜单集成 — 右键菜单快捷操作（新建/打开 Flow、跳转到关联 Dialogue）
+- [x] **FLW-03**: Canvas 节点类型识别 — 区分 `.ncanvas`、`.md`(Character/Location/Quest) 节点并在 Canvas 中显示对应样式
+- [x] **FLW-04**: Flow → Dialogue 导航 — 在 Canvas 中点击 `.ncanvas` 节点打开 Narrative Canvas 编辑器
+- [x] **FLW-05**: Dialogue → Flow 导航 — 在 Narrative Canvas 中点击引用节点跳回 Flow Canvas
+- [x] **FLW-06**: Flow 文件菜单集成 — 右键菜单快捷操作（新建/打开 Flow、跳转到关联 Dialogue）
 
 ### Narrative Project
 
 - [x] **PRJ-01**: 项目配置 UI — 导出路径、格式选项、Godot 项目路径设置
 - [x] **PRJ-02**: 批量导出命令 — 一键导出指定目录下所有 `.ncanvas` 为 `.dialogue`
-- [ ] **PRJ-03**: 自动导出（文件变更监听） — 保存 `.ncanvas` 时自动触发导出
+- [x] **PRJ-03**: 自动导出（文件变更监听） — 保存 `.ncanvas` 时自动触发导出
 - [x] **PRJ-04**: 导出状态指示 — Obsidian 状态栏显示导出成功/失败/进行中
-- [ ] **PRJ-05**: 跨文件引用验证 — 检查 Flow 节点引用的 Dialogue 文件是否存在
+- [x] **PRJ-05**: 跨文件引用验证 — 检查 Flow 节点引用的 Dialogue 文件是否存在
 
 ## v2 Requirements
 
@@ -131,15 +131,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENT-05 | Phase 3 | Complete |
 | FLW-01 | Phase 3 | Complete |
 | FLW-02 | Phase 3 | Complete |
-| FLW-03 | Phase 3 | Pending |
-| FLW-04 | Phase 3 | Pending |
-| FLW-05 | Phase 3 | Pending |
-| FLW-06 | Phase 3 | Pending |
+| FLW-03 | Phase 3 | Complete |
+| FLW-04 | Phase 3 | Complete |
+| FLW-05 | Phase 3 | Complete |
+| FLW-06 | Phase 3 | Complete |
 | PRJ-01 | Phase 4 | Complete |
 | PRJ-02 | Phase 4 | Complete |
-| PRJ-03 | Phase 4 | Pending |
+| PRJ-03 | Phase 4 | Complete |
 | PRJ-04 | Phase 4 | Complete |
-| PRJ-05 | Phase 4 | Pending |
+| PRJ-05 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 35 total
@@ -148,4 +148,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-23*
-*Last updated: 2026-07-24 — Phase 2 complete, all EXP and MED requirements marked complete*
+*Last updated: 2026-07-24 — All 35/35 v1 requirements complete. Phases 1-4 finished.*

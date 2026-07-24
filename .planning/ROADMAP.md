@@ -13,8 +13,8 @@ The roadmap transforms 35 v1 requirements into 4 delivery phases, each producing
 
 - [x] **Phase 1: Project Foundation** -- Shared modules, build system, test infrastructure, plugin scaffolding
 - [x] **Phase 2: Dialogue Export** -- .ncanvas to .dialogue conversion with full Godot Dialogue Manager + MED state system support
-- [ ] **Phase 3: Entities + Flow Tools** -- Structured entity templates, Flow Canvas management, bidirectional Flow-Dialogue navigation
-- [ ] **Phase 4: Narrative Project** -- Project-wide configuration, batch/auto-export, cross-file validation, Graph View integration
+- [x] **Phase 3: Entities + Flow Tools** -- Structured entity templates, Flow Canvas management, bidirectional Flow-Dialogue navigation
+- [x] **Phase 4: Narrative Project** -- Project-wide configuration, batch/auto-export, cross-file validation, Graph View integration
 
 ## Phase Details
 
@@ -81,7 +81,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md -- Entity Markdown template generators (Character/Location/Quest/Item) with TDD golden file tests
 - [x] 03-02-PLAN.md -- Flow Canvas and Flow Fragment .canvas JSON templates + canvas-utils.js tools
-- [ ] 03-03-PLAN.md -- Flow Tools plugin integration (commands, file-menu hooks, CSS node type distinction, bidirectional navigation)
+- [x] 03-03-PLAN.md -- Flow Tools plugin integration (commands, file-menu hooks, CSS node type distinction, bidirectional navigation)
 **UI hint**: yes
 
 ### Phase 4: Narrative Project
@@ -103,7 +103,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md -- Project settings tab (PRJ-01): Export Path, MED toggle, Export Scope
 - [x] 04-02-PLAN.md -- Batch export command + status bar (PRJ-02, PRJ-04): exportAllDialogues, StatusBarManager with pending/exporting/success/failure states
-- [ ] 04-03-PLAN.md -- Auto-export on save + reference validation (PRJ-03, PRJ-05): vault.on('modify') debounced listener, validateReferences cross-file checker
+- [x] 04-03-PLAN.md -- Auto-export on save + reference validation (PRJ-03, PRJ-05): vault.on('modify') debounced listener, validateReferences cross-file checker
 **UI hint**: yes
 
 ## Progress
@@ -112,9 +112,9 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Project Foundation | 3/3 | Complete | 2026-07-24 |
 | 2. Dialogue Export | 3/3 | Complete | 2026-07-24 |
-| 3. Entities + Flow Tools | 2/3 | In Progress|  |
-| 4. Narrative Project | 2/3 | In Progress|  |
+| 3. Entities + Flow Tools | 3/3 | Complete | 2026-07-24 |
+| 4. Narrative Project | 3/3 | Complete | 2026-07-24 |
 
 ---
 *Roadmap created: 2026-07-23*
-*Last updated: 2026-07-24 — Phase 4 plans created (3 plans, 3 waves)*
+*Last updated: 2026-07-24 — All 4 phases complete (12/12 plans, 35/35 v1 requirements fulfilled)*

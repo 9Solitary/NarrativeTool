@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-07-24T08:03:25.359Z"
+last_updated: "2026-07-24T08:09:17.430Z"
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
-  percent: 58
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State: Obsidian Narrative Toolchain
@@ -23,16 +23,16 @@ progress:
 
 **What This Is:** A suite of Obsidian plugins enabling game narrative designers to organize worldbuilding, design chapter/quest flow, edit dialogue, and export directly to Godot Dialogue Manager format -- approaching Articy:draft narrative design capability within Obsidian.
 
-**Current Focus:** Phase 4 -- Narrative Project. Plans 04-01 and 04-02 complete (Settings Tab + Batch Export). Plan 04-03 pending.
+**Current Focus:** Phase 4 -- Narrative Project. All plans complete (04-01 Settings Tab, 04-02 Batch Export + Status Bar, 04-03 Auto-Export + Reference Validation).
 
 ## Current Position
 
 | Attribute | Value |
 |-----------|-------|
 | Phase | 4 - Narrative Project |
-| Plans | 2 complete of 3 total (Phase 4) |
-| Status | Plan 04-02 complete -- Batch export + status bar. Ready for 04-03 auto-export. |
-| Progress | ████████████████ 11/12 total plans, 2/4 phases complete |
+| Plans | 3 complete of 3 total (Phase 4) |
+| Status | Phase 4 complete. All 12/12 plans done, all 35 v1 requirements fulfilled. |
+| Progress | ████████████████ 12/12 total plans, 4/4 phases complete |
 
 ## Performance Metrics
 
@@ -63,6 +63,11 @@ progress:
 - Obsidian API mocking: Module._resolveFilename hook redirects 'obsidian' to tests/mocks/obsidian.js
 - DEFAULT_SETTINGS is Object.freeze() for immutability; cannot be mutated accidentally
 - Narrative Project settings exposed on plugin instance (not private) per ARCHITECTURE.md Pattern 3
+- Auto-export 2-second debounce with Set-based dedup matches ROADMAP SC #3 timing
+- Reference validator only checks Flow→Dialogue (.canvas→.ncanvas) direction; reverse check is out of scope
+- Non-.ncanvas file references (.md, .canvas) in file nodes are skipped, not reported as broken
+- exporting state reused for reference validation check progress (exporting spinner)
+- All status bar success/failure states auto-revert to pending after 5 seconds per SC #6
 
 ### Open Questions
 
@@ -84,23 +89,24 @@ progress:
 - [x] Execute Plan 03-02: Canvas templates (Flow Canvas + Flow Fragment) — 12 tests, 0 failures
 - [x] Execute Plan 04-01: Narrative Project settings tab (DEFAULT_SETTINGS + NarrativeProjectSettingTab + main.js integration) — 203 tests, 0 failures
 - [x] Execute Plan 04-02: Batch export + status bar (exportAllDialogues + StatusBarManager + main.js integration) — 39 new tests, 0 failures
+- [x] Execute Plan 04-03: Auto-export + reference validation (auto-export.js + reference-validator.js + main.js integration) — 14 new tests, 53 total, 0 failures
 
 ### Blockers
 
 - None
-- Phase 4 Plans 04-01 and 04-02 complete. Ready for Plan 04-03: Auto-export.
+- All 12 plans complete. All 35 v1 requirements fulfilled. Milestone v1.0 reached.
 
 ## Session Continuity
 
 ### Last Session
 
 - **Date:** 2026-07-24
-- **Action:** Executed Plan 04-02 (Batch Export + Status Bar) — exportAllDialogues, StatusBarManager, main.js integration, styles.css
-- **Outcome:** 5 commits. batch-export.js (166 lines), status-bar.js (88 lines), main.js (75 lines), styles.css (68 lines). 17 new tests (39 total for plan phase, 0 failures). TDD RED/GREEN cycle for Tasks 1-2, direct implementation for Task 3.
+- **Action:** Executed Plan 04-03 (Auto-Export + Reference Validation) — auto-export.js, reference-validator.js, main.js integration
+- **Outcome:** 5 commits (2 TDD RED/GREEN cycles + integration). auto-export.js (198 lines), reference-validator.js (102 lines), main.js (163 lines). 14 new tests, 53 total, 0 failures. All 12/12 plans complete, all 35 v1 requirements fulfilled.
 
 ### Next Steps
 
-1. Phase 4 Plan 04-03: Auto-export + status bar (auto-export on .ncanvas save)
+- Milestone v1.0 complete. Ready for `/gsd-complete-milestone`.
 
 ---
 *State initialized: 2026-07-23*
