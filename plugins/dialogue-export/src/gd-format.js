@@ -98,17 +98,26 @@ function resolveNestedKey(obj, dotPath) {
 
 /**
  * Replace {variable_name} and {nested.key} patterns in text with literal values.
+ * When medEnabled is true, variables with flag_/res_ prefixes are converted to
+ * MED inline display syntax: {{res(&"name")}}.
  * Unresolved patterns stay as-is.
  *
  * @param {string} text - Body text potentially containing {variable} templates
  * @param {Object} variables - project.variables{} object
+ * @param {boolean} [medEnabled] - If true, convert state-prefixed vars to MED display syntax
  * @returns {string} Text with resolved variables
  */
-function resolveVariables(text, variables) {
+function resolveVariables(text, variables, medEnabled) {
     if (!text || typeof text !== 'string') return text || '';
     if (!variables || typeof variables !== 'object') return text;
 
     return text.replace(/\{(\w+(?:\.\w+)*)\}/g, (match, key) => {
+        // MED mode: convert flag_ and res_ prefixed variables to inline display syntax
+        if (medEnabled && (key.startsWith('flag_') || key.startsWith('res_'))) {
+            const medKey = key.replace(/^(flag_|res_)/, '');
+            return '{{res(&"' + medKey + '")}}';
+        }
+        // Standard mode: resolve to literal value
         const value = resolveNestedKey(variables, key);
         if (value !== undefined) {
             return String(value);
@@ -138,7 +147,7 @@ function formatEntryNode(node, ctx) {
     // If Entry has body text, emit it as plain narrator text (no character prefix)
     // Entry nodes are structural — body content is narration, not character dialogue
     if (node.body && node.body.trim().length > 0) {
-        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables);
+        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
         lines.push(indentedLine(ctx.depth, resolvedBody));
     }
 
@@ -165,13 +174,13 @@ function formatDialogNode(node, ctx) {
 
     // Resolve variables in body
     const variables = ctx.variablesObj || ctx.variables;
-    const resolvedBody = resolveVariables(node.body, variables);
+    const resolvedBody = resolveVariables(node.body, variables, ctx.medEnabled);
 
     lines.push(indentedLine(ctx.depth, formatDialogLine(charName, resolvedBody)));
 
     // If node has customFields with readout, emit that as additional line
     if (node.customFields && node.customFields.readout) {
-        const readoutBody = resolveVariables(node.customFields.readout, variables);
+        const readoutBody = resolveVariables(node.customFields.readout, variables, ctx.medEnabled);
         lines.push(indentedLine(ctx.depth, formatDialogLine(charName, readoutBody)));
     }
 
@@ -191,7 +200,7 @@ function formatContentNode(node, ctx) {
     if (!node.body || node.body.trim().length === 0) {
         return [];
     }
-    const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables);
+    const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
     return [indentedLine(ctx.depth, resolvedBody)];
 }
 
@@ -216,7 +225,7 @@ function formatChoiceNode(node, ctx) {
         const charName = ctx.resolveCharacter
             ? ctx.resolveCharacter(node, ctx.charactersArr)
             : null;
-        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables);
+        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
         lines.push(indentedLine(ctx.depth, formatDialogLine(charName, resolvedBody)));
     }
 
@@ -267,7 +276,16 @@ function formatChoiceNode(node, ctx) {
         for (let i = 0; i < choiceOptions.length; i++) {
             const opt = choiceOptions[i];
             const label = opt.label || `Option ${i + 1}`;
-            lines.push(indentedLine(ctx.depth, TOKENS.OPTION_PREFIX + label));
+
+            // Build the option line with optional inline condition suffix
+            let optLine = TOKENS.OPTION_PREFIX + label;
+
+            // MED-08: Add [if condition /] suffix when option has requires and MED is enabled
+            if (ctx.medEnabled && opt.requires && opt.requires.trim().length > 0) {
+                optLine += ' [if ' + opt.requires + ' /]';
+            }
+
+            lines.push(indentedLine(ctx.depth, optLine));
 
             // Find the target link for this option
             const links = ctx.adjacency.get(node.id) || [];
@@ -317,7 +335,7 @@ function formatMarkerNode(node, ctx) {
 
     // If Marker has body text, emit it as plain narrator text
     if (node.body && node.body.trim().length > 0) {
-        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables);
+        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
         lines.push(indentedLine(ctx.depth, resolvedBody));
     }
 
@@ -339,7 +357,7 @@ function formatEventNode(node, ctx) {
     lines.push(indentedLine(ctx.depth, '~ ' + cueName));
 
     if (node.body && node.body.trim().length > 0) {
-        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables);
+        const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
         lines.push(indentedLine(ctx.depth, resolvedBody));
     }
 

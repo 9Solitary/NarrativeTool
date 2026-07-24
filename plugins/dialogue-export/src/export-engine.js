@@ -133,17 +133,26 @@ function resolveNestedKey(obj, dotPath) {
 
 /**
  * Replace {variable_name} and {nested.key} patterns in text with literal values.
+ * When medEnabled is true, variables with flag_/res_ prefixes are converted to
+ * MED inline display syntax: {{res(&"name")}}.
  * Unresolved patterns stay as-is (per RESEARCH.md Pitfall handling).
  *
  * @param {string} text - Body text potentially containing {variable} templates
  * @param {Object} variables - project.variables{} object
+ * @param {boolean} [medEnabled] - If true, convert state-prefixed vars to MED display syntax
  * @returns {string} Text with resolved variables
  */
-function resolveVariables(text, variables) {
+function resolveVariables(text, variables, medEnabled) {
     if (!text || typeof text !== 'string') return text || '';
     if (!variables) return text;
 
     return text.replace(/\{(\w+(?:\.\w+)*)\}/g, (match, key) => {
+        // MED mode: convert flag_ and res_ prefixed variables to inline display syntax
+        if (medEnabled && (key.startsWith('flag_') || key.startsWith('res_'))) {
+            const medKey = key.replace(/^(flag_|res_)/, '');
+            return '{{res(&"' + medKey + '")}}';
+        }
+        // Standard mode: resolve to literal value
         const value = resolveNestedKey(variables, key);
         if (value !== undefined) {
             return String(value);
@@ -221,8 +230,8 @@ function exportEngine(ncanvasJson, config) {
     // Emit MED header if detected
     if (medDetected) {
         const medHeader = formatMedHeader(ncanvasJson);
-        if (medHeader) {
-            lines.push(medHeader);
+        if (medHeader && medHeader.length > 0) {
+            lines.push(...medHeader);
         }
     }
 
@@ -238,14 +247,14 @@ function exportEngine(ncanvasJson, config) {
         variables: variables,
         medEnabled: cfg.medEnabled && medDetected,
         formatNode: function(node, childCtx) {
-            // Check if MED formatting should be used for this node
+            // Always emit base DM lines first
+            const baseLines = formatNode(node, childCtx);
+            // Then append MED-specific lines if enabled
             if (childCtx.medEnabled) {
                 const medLines = formatMedNode(node, childCtx);
-                if (medLines && medLines.length > 0) {
-                    return medLines;
-                }
+                return baseLines.concat(medLines || []);
             }
-            return formatNode(node, childCtx);
+            return baseLines;
         },
         resolveCharacter: resolveCharacter,
         resolveVariables: resolveVariables,
@@ -276,10 +285,19 @@ function exportEngine(ncanvasJson, config) {
             // Choice nodes handle their own children inline via formatChoiceNode
             const result = formatNode(node, nodeCtx);
             lines.push(...result);
+            // Append MED-specific lines (mutations, conditional blocks) AFTER base output
+            if (medDetected) {
+                const medLines = formatMedNode(node, nodeCtx);
+                lines.push(...medLines);
+            }
         } else if (node.type === 'Entry') {
             // Entry nodes emit cue + body, then walk children at depth 0
             const result = formatNode(node, { ...nodeCtx, depth: 0 });
             lines.push(...result);
+            if (medDetected) {
+                const medLines = formatMedNode(node, { ...nodeCtx, depth: 0 });
+                lines.push(...medLines);
+            }
             const children = adjacency.get(nodeId) || [];
             for (const link of children) {
                 walkNode(link.to, 0);
@@ -288,6 +306,10 @@ function exportEngine(ncanvasJson, config) {
             // Marker/Event nodes emit cue + body, then walk children at same depth
             const result = formatNode(node, nodeCtx);
             lines.push(...result);
+            if (medDetected) {
+                const medLines = formatMedNode(node, nodeCtx);
+                lines.push(...medLines);
+            }
             const children = adjacency.get(nodeId) || [];
             for (const link of children) {
                 walkNode(link.to, depth);
@@ -296,6 +318,10 @@ function exportEngine(ncanvasJson, config) {
             // Dialog and Content nodes: emit their line, then walk children at same depth
             const result = formatNode(node, nodeCtx);
             lines.push(...result);
+            if (medDetected) {
+                const medLines = formatMedNode(node, nodeCtx);
+                lines.push(...medLines);
+            }
             const children = adjacency.get(nodeId) || [];
             for (const link of children) {
                 walkNode(link.to, depth);
