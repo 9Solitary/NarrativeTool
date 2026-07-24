@@ -55,7 +55,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Narrative Project
 
-- [ ] **PRJ-01**: 项目配置 UI — 导出路径、格式选项、Godot 项目路径设置
+- [x] **PRJ-01**: 项目配置 UI — 导出路径、格式选项、Godot 项目路径设置
 - [ ] **PRJ-02**: 批量导出命令 — 一键导出指定目录下所有 `.ncanvas` 为 `.dialogue`
 - [ ] **PRJ-03**: 自动导出（文件变更监听） — 保存 `.ncanvas` 时自动触发导出
 - [ ] **PRJ-04**: 导出状态指示 — Obsidian 状态栏显示导出成功/失败/进行中
@@ -135,7 +135,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FLW-04 | Phase 3 | Pending |
 | FLW-05 | Phase 3 | Pending |
 | FLW-06 | Phase 3 | Pending |
-| PRJ-01 | Phase 4 | Pending |
+| PRJ-01 | Phase 4 | Complete |
 | PRJ-02 | Phase 4 | Pending |
 | PRJ-03 | Phase 4 | Pending |
 | PRJ-04 | Phase 4 | Pending |

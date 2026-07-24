@@ -101,7 +101,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- Project settings tab (PRJ-01): Export Path, MED toggle, Export Scope
+- [x] 04-01-PLAN.md -- Project settings tab (PRJ-01): Export Path, MED toggle, Export Scope
 - [ ] 04-02-PLAN.md -- Batch export command + status bar (PRJ-02, PRJ-04): exportAllDialogues, StatusBarManager with pending/exporting/success/failure states
 - [ ] 04-03-PLAN.md -- Auto-export on save + reference validation (PRJ-03, PRJ-05): vault.on('modify') debounced listener, validateReferences cross-file checker
 **UI hint**: yes
@@ -113,7 +113,7 @@ Plans:
 | 1. Project Foundation | 3/3 | Complete | 2026-07-24 |
 | 2. Dialogue Export | 3/3 | Complete | 2026-07-24 |
 | 3. Entities + Flow Tools | 2/3 | In Progress|  |
-| 4. Narrative Project | 0/3 | Planned | - |
+| 4. Narrative Project | 1/3 | In Progress|  |
 
 ---
 *Roadmap created: 2026-07-23*
