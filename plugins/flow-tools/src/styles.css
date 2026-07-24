@@ -1,0 +1,66 @@
+/* Flow Tools -- Canvas node type visual distinction (FLW-03)
+ *
+ * Injected at runtime by FlowToolsPlugin into Obsidian's DOM as
+ * <style id="nt-flow-tools-styles">. Targets .canvas-node elements
+ * that have been annotated with data-nt-type attributes by the
+ * plugin's MutationObserver-based DOM augmentation.
+ *
+ * All rules use data-nt-type attribute selectors to avoid dependency
+ * on Obsidian Canvas internal DOM structure. CSS variables (var(--color-*))
+ * are provided by Obsidian's theme system for dark/light mode compatibility.
+ *
+ * Phase 3 (current): Two-level detection
+ *   Level 1: .ncanvas file nodes -> data-nt-type="dialogue" (blue border)
+ *   Level 2: .md file nodes      -> data-nt-type="entity"    (cyan border)
+ *
+ * Phase 4 (future): Full entity-type detection via frontmatter reading
+ *   Will use data-nt-type="character" / "location" / "quest" / "item"
+ *   The CSS rules for those types are defined below for forward compatibility.
+ */
+
+/* ---- Dialogue nodes (.ncanvas files) -- blue left border ---- */
+.canvas-node[data-nt-type="dialogue"] > .canvas-node-container {
+    border-left: 4px solid var(--color-blue);
+}
+
+/* ---- Entity nodes (.md files: Character/Location/Quest/Item) -- cyan left border ---- */
+.canvas-node[data-nt-type="entity"] > .canvas-node-container {
+    border-left: 4px solid var(--color-cyan);
+}
+
+/* ---- Future: Character nodes (.md with character tag) -- green left border ---- */
+/* Phase 4: activated when data-nt-type="character" is set via frontmatter reading */
+.canvas-node[data-nt-type="character"] > .canvas-node-container {
+    border-left: 4px solid var(--color-green);
+}
+
+/* ---- Future: Location nodes -- orange left border ---- */
+.canvas-node[data-nt-type="location"] > .canvas-node-container {
+    border-left: 4px solid var(--color-orange);
+}
+
+/* ---- Future: Quest nodes -- purple left border ---- */
+.canvas-node[data-nt-type="quest"] > .canvas-node-container {
+    border-left: 4px solid var(--color-purple);
+}
+
+/* ---- Future: Item nodes -- gray left border ---- */
+.canvas-node[data-nt-type="item"] > .canvas-node-container {
+    border-left: 4px solid var(--text-muted);
+}
+
+/* Note on DOM augmentation (implemented in main.js, not in this CSS file):
+ *
+ * The MutationObserver-based JavaScript in FlowToolsPlugin._annotateAllCanvasViews()
+ * reads the Observable Canvas DOM to find .canvas-node elements and sets data-nt-type
+ * attributes based on file extension patterns in the node label text:
+ *   - Labels ending with ".ncanvas" -> data-nt-type="dialogue"
+ *   - Labels ending with ".md"      -> data-nt-type="entity"
+ *
+ * This augmentation runs on layout-change events (debounced 200ms) and on initial
+ * scan. The CSS rules above take effect immediately once the attribute is set.
+ *
+ * T-03-09 mitigation: layout-change handler uses debounce to avoid CPU spikes.
+ * T-03-10: data-nt-type contains only type strings, never file paths.
+ * T-03-11: CSS rules only target [data-nt-type] (set by JS), not label content.
+ */
