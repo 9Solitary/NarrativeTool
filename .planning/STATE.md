@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-07-24T03:16:38.102Z"
+last_updated: "2026-07-24T03:23:06Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
-  percent: 33
+  completed_plans: 6
+  percent: 50
 ---
 
 # Project State: Obsidian Narrative Toolchain
@@ -23,16 +23,16 @@ progress:
 
 **What This Is:** A suite of Obsidian plugins enabling game narrative designers to organize worldbuilding, design chapter/quest flow, edit dialogue, and export directly to Godot Dialogue Manager format -- approaching Articy:draft narrative design capability within Obsidian.
 
-**Current Focus:** Phase 2 -- Dialogue Export. Building the Godot DM export engine (Plan 02-01 complete: export engine core + base DM syntax formatter).
+**Current Focus:** Phase 2 -- Dialogue Export. All 3 Phase 2 plans complete. Plugin integration wired, full test suite passing (157 tests, 0 failures).
 
 ## Current Position
 
 | Attribute | Value |
 |-----------|-------|
 | Phase | 2 - Dialogue Export |
-| Plans | 1 complete of 3 total (Phase 2) |
-| Status | Plan 02-01 complete -- export engine core + base DM syntax |
-| Progress | ██████████░░ 5/7 total plans, 1/4 phases complete |
+| Plans | 3 complete of 3 total (Phase 2) |
+| Status | Phase 2 complete -- export engine + MED + plugin integration all done |
+| Progress | ████████████ 6/7 total plans, 1/4 phases complete |
 
 ## Performance Metrics
 
@@ -41,8 +41,8 @@ progress:
 | Build time (esbuild, per plugin) | < 2s | -- |
 | Export time (single .ncanvas) | < 150ms | -- |
 | Export time (batch, 100 files) | < 30s | -- |
-| Test suite runtime | < 5s | ~80ms (53 tests) |
-| Plugin file size (per main.js) | < 500KB | -- |
+| Test suite runtime | < 5s | ~108ms (157 tests) |
+| Plugin file size (per main.js) | < 500KB | 10KB (minified CJS) |
 
 ## Accumulated Context
 
@@ -70,23 +70,26 @@ progress:
 - [x] Execute Plan 01-02: Plugin scaffolding and build config
 - [x] Execute Plan 01-03: Test infrastructure
 - [x] Execute Plan 02-01: Export engine core + base Godot DM syntax formatter
+- [x] Execute Plan 02-02: MED state extension formatter (38 tests)
+- [x] Execute Plan 02-03: Plugin integration (Obsidian command, 157 total tests, 0 failures)
 
 ### Blockers
 
 - None
+- Phase 2 complete. Ready for Phase 3: Entities + Flow.
 
 ## Session Continuity
 
 ### Last Session
 
 - **Date:** 2026-07-24
-- **Action:** Executed Plan 02-01 (Export Engine Core + Base DM Syntax)
-- **Outcome:** 12 files created, 2 files updated across 3 commits. export-engine.js (graph traversal + character resolution), gd-format.js (6 node type formatters), med-format.js (skeleton stubs). 4 new fixtures + 6 golden files. Full suite: 53 tests, 0 failures.
+- **Action:** Executed Plan 02-03 (Plugin Integration) — final Phase 2 plan
+- **Outcome:** 3 commits. main.js wired with real exportCurrentDialogue() command. export-plugin.test.js (14 tests) and updated export.test.js master suite. Full suite: 157 tests, 0 failures across all 40 suites. esbuild build: 10KB minified CJS.
 
 ### Next Steps
 
-1. Plan 02-02: MED state extension formatter (using S, set_flag, add_res, checks, terms)
-2. Plan 02-03: Obsidian plugin command integration (vault-level commands, file output)
+1. Phase 3: Entities + Flow (entity framework, file watchers, auto-export)
+2. Phase 4: Narrative Project (reference validation, cross-file entity management)
 
 ---
 *State initialized: 2026-07-23*

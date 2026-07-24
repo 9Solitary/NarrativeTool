@@ -27,14 +27,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Dialogue Export — MED Extensions
 
-- [ ] **MED-01**: `using S` 声明 — 使用状态系统的对话自动在文件头插入
-- [ ] **MED-02**: `do set_flag(id, value)` 导出 — Narrative Canvas 条件分支映射为 flag 设置
-- [ ] **MED-03**: `do add_res(id, delta)` 等资源修改语句导出
-- [ ] **MED-04**: `[#check=type:id:threshold]` 检定语法导出 — Narrative Canvas 条件节点映射为检定
-- [ ] **MED-05**: `[term=id]` 说明词导出 — Narrative Canvas 术语标记映射
-- [ ] **MED-06**: `{{res(&"id")}}` 等内联状态显示导出
-- [ ] **MED-07**: `~ direct_check` 直接检定导出 — 非选项触发的检定场景
-- [ ] **MED-08**: `[if condition]` 选项条件导出 — Narrative Canvas 的条件表达式映射为 MED 条件
+- [x] **MED-01**: `using S` 声明 — 使用状态系统的对话自动在文件头插入
+- [x] **MED-02**: `do set_flag(id, value)` 导出 — Narrative Canvas 条件分支映射为 flag 设置
+- [x] **MED-03**: `do add_res(id, delta)` 等资源修改语句导出
+- [x] **MED-04**: `[#check=type:id:threshold]` 检定语法导出 — Narrative Canvas 条件节点映射为检定
+- [x] **MED-05**: `[term=id]` 说明词导出 — Narrative Canvas 术语标记映射
+- [x] **MED-06**: `{{res(&"id")}}` 等内联状态显示导出
+- [x] **MED-07**: `~ direct_check` 直接检定导出 — 非选项触发的检定场景
+- [x] **MED-08**: `[if condition]` 选项条件导出 — Narrative Canvas 的条件表达式映射为 MED 条件
 
 ### Character & Entity
 
@@ -116,14 +116,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXP-05 | Phase 2 | Complete |
 | EXP-06 | Phase 2 | Complete |
 | EXP-07 | Phase 2 | Complete |
-| MED-01 | Phase 2 | Pending |
-| MED-02 | Phase 2 | Pending |
-| MED-03 | Phase 2 | Pending |
-| MED-04 | Phase 2 | Pending |
-| MED-05 | Phase 2 | Pending |
-| MED-06 | Phase 2 | Pending |
-| MED-07 | Phase 2 | Pending |
-| MED-08 | Phase 2 | Pending |
+| MED-01 | Phase 2 | Complete |
+| MED-02 | Phase 2 | Complete |
+| MED-03 | Phase 2 | Complete |
+| MED-04 | Phase 2 | Complete |
+| MED-05 | Phase 2 | Complete |
+| MED-06 | Phase 2 | Complete |
+| MED-07 | Phase 2 | Complete |
+| MED-08 | Phase 2 | Complete |
 | ENT-01 | Phase 3 | Pending |
 | ENT-02 | Phase 3 | Pending |
 | ENT-03 | Phase 3 | Pending |
@@ -148,4 +148,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-23*
-*Last updated: 2026-07-23 after initial definition*
+*Last updated: 2026-07-24 — Phase 2 complete, all EXP and MED requirements marked complete*
