@@ -9,7 +9,7 @@ progress:
   completed_phases: 2
   total_plans: 9
   completed_plans: 8
-  percent: 50
+  percent: 89
 ---
 
 # Project State: Obsidian Narrative Toolchain
