@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "savedAt": "2026-07-24T00:00:00.000Z",
+  "project": {
+    "title": "Basic Dialogue",
+    "notes": "Tests EXP-01 (base DM syntax) and EXP-02 (character name mapping). Simple Entry->Dialog->Content flow.",
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "Entry",
+        "title": "Start",
+        "body": "The adventure begins.",
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "n1",
+        "type": "Dialog",
+        "title": "Nathan",
+        "body": "Hello there, traveler.",
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "n2",
+        "type": "Dialog",
+        "title": "Mara",
+        "body": "I've been expecting you.",
+        "x": 560,
+        "y": 80
+      },
+      {
+        "id": "n3",
+        "type": "Content",
+        "title": "Narration",
+        "body": "The room falls silent.",
+        "x": 800,
+        "y": 80
+      }
+    ],
+    "links": [
+      {
+        "id": "l0",
+        "from": "n0",
+        "to": "n1"
+      },
+      {
+        "id": "l1",
+        "from": "n1",
+        "to": "n2"
+      },
+      {
+        "id": "l2",
+        "from": "n2",
+        "to": "n3"
+      }
+    ]
+  },
+  "ui": {
+    "activeFileId": "basic"
+  }
+}

@@ -210,9 +210,6 @@ function exportEngine(ncanvasJson, config) {
     const entryNodes = nodes.filter(n => n.type === 'Entry');
     const startNode = entryNodes.length > 0 ? entryNodes[0] : nodes[0];
 
-    // Calculate topological order from start node
-    const order = topologicalSort(nodes, links, startNode.id);
-
     // MED auto-detection (from RESEARCH.md Pattern 5)
     let medDetected = false;
     if (cfg.medEnabled) {
@@ -229,7 +226,12 @@ function exportEngine(ncanvasJson, config) {
         }
     }
 
-    // Context object passed to all format functions
+    // ----- Forward declaration of walkNode (defined before ctx, used by ctx.walkChildren) -----
+    const visited = new Set();
+    // walkNode is declared HERE as a variable so that ctx can close over it
+    let walkNode;
+
+    // ----- Context object passed to all format functions -----
     const ctx = {
         depth: 0,
         characters: characterMap,
@@ -251,41 +253,62 @@ function exportEngine(ncanvasJson, config) {
         nodeMap: nodeMap,
         links: links,
         charactersArr: characters,
-        variablesObj: variables
+        variablesObj: variables,
+        walkChildren: function(nodeId, depth) {
+            const children = adjacency.get(nodeId) || [];
+            for (const link of children) {
+                walkNode(link.to, depth);
+            }
+        }
     };
 
-    // Process each node in topological order
-    // We use an index-based loop since some nodes may be processed by their parent
-    // (Choice nodes walk their children inline)
-    const processed = new Set();
+    // ----- Define walkNode now that ctx is fully formed -----
+    walkNode = function(nodeId, depth) {
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
 
-    for (const node of order) {
-        // Skip nodes already processed (e.g., choice children processed inline by parent)
-        if (processed.has(node.id)) continue;
-        processed.add(node.id);
+        const node = nodeMap.get(nodeId);
+        if (!node) return;
 
-        // Special handling: Choice nodes emit body + options and recursively walk children
+        const nodeCtx = { ...ctx, depth: depth };
+
         if (node.type === 'Choice') {
-            const countBefore = lines.length;
-            const result = formatNode(node, { ...ctx, depth: 0 });
+            // Choice nodes handle their own children inline via formatChoiceNode
+            const result = formatNode(node, nodeCtx);
             lines.push(...result);
-
-            // Mark all children of this Choice node as processed
-            const choiceLinks = adjacency.get(node.id) || [];
-            for (const link of choiceLinks) {
-                const childId = link.to;
-                if (!processed.has(childId)) {
-                    processed.add(childId);
-                    // Child content is already emitted by formatChoiceNode
-                    // via recursive ctx.formatNode calls, so just mark as done
-                    // The content IS included in the lines above from formatNode
-                }
+        } else if (node.type === 'Entry') {
+            // Entry nodes emit cue + body, then walk children at depth 0
+            const result = formatNode(node, { ...nodeCtx, depth: 0 });
+            lines.push(...result);
+            const children = adjacency.get(nodeId) || [];
+            for (const link of children) {
+                walkNode(link.to, 0);
+            }
+        } else if (node.type === 'Marker' || node.type === 'Event') {
+            // Marker/Event nodes emit cue + body, then walk children at same depth
+            const result = formatNode(node, nodeCtx);
+            lines.push(...result);
+            const children = adjacency.get(nodeId) || [];
+            for (const link of children) {
+                walkNode(link.to, depth);
             }
         } else {
-            const result = formatNode(node, { ...ctx, depth: 0 });
+            // Dialog and Content nodes: emit their line, then walk children at same depth
+            const result = formatNode(node, nodeCtx);
             lines.push(...result);
+            const children = adjacency.get(nodeId) || [];
+            for (const link of children) {
+                walkNode(link.to, depth);
+            }
         }
+    };
+
+    // ----- Start walking from the start node -----
+    // If there's no Entry node, emit ~ start as the default opening cue
+    if (entryNodes.length === 0) {
+        lines.push('~ start');
     }
+    walkNode(startNode.id, 0);
 
     return lines.join('\n') + '\n';
 }

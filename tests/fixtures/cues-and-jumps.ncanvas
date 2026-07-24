@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "savedAt": "2026-07-24T00:00:00.000Z",
+  "project": {
+    "title": "Cues and Jumps",
+    "notes": "Tests EXP-05 (cue/jump mapping). Marker nodes with slugified names.",
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "Entry",
+        "title": "Start",
+        "body": "Opening scene.",
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "n1",
+        "type": "Marker",
+        "title": "Chapter Two",
+        "body": "A new chapter begins.",
+        "x": 320,
+        "y": 160
+      },
+      {
+        "id": "n2",
+        "type": "Marker",
+        "title": "Ending",
+        "body": "The end.",
+        "x": 320,
+        "y": 300
+      }
+    ],
+    "links": [
+      {
+        "id": "l0",
+        "from": "n0",
+        "to": "n1"
+      },
+      {
+        "id": "l1",
+        "from": "n0",
+        "to": "n2"
+      }
+    ]
+  },
+  "ui": {
+    "activeFileId": "cues"
+  }
+}

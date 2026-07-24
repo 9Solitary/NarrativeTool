@@ -224,6 +224,44 @@ function formatChoiceNode(node, ctx) {
     const choiceOptions = node.choiceOptions || [];
     const simpleChoices = node.choices || [];
 
+    /**
+     * Walk the subtree rooted at a node, collecting formatted lines recursively.
+     * Handles both Choice and non-Choice nodes at any depth.
+     *
+     * @param {string} startNodeId - ID of the node to start from
+     * @param {number} walkDepth - Current indentation depth for this subtree
+     * @param {Set} walkVisited - Set of visited node IDs to prevent cycles
+     * @returns {Array<string>} Collected lines for this subtree
+     */
+    function walkSubtree(startNodeId, walkDepth, walkVisited) {
+        if (walkVisited.has(startNodeId)) return [];
+        walkVisited.add(startNodeId);
+
+        const subNode = ctx.nodeMap.get(startNodeId);
+        if (!subNode) return [];
+
+        const result = [];
+        const subCtx = { ...ctx, depth: walkDepth, formatNode: ctx.formatNode };
+
+        // Format this node
+        const subLines = ctx.formatNode(subNode, subCtx);
+        result.push(...subLines);
+
+        if (subNode.type === 'Choice') {
+            // Choice nodes handle their own children inline — nothing more to do here
+            // as formatChoiceNode already recurses into option targets
+        } else {
+            // For non-Choice nodes, walk their children at the same depth
+            const outgoingLinks = ctx.adjacency.get(startNodeId) || [];
+            for (const outLink of outgoingLinks) {
+                const childLines = walkSubtree(outLink.to, walkDepth, walkVisited);
+                result.push(...childLines);
+            }
+        }
+
+        return result;
+    }
+
     if (choiceOptions.length > 0) {
         // Rich choice format: choiceOptions[] has { id, label, requires?, effects? }
         for (let i = 0; i < choiceOptions.length; i++) {
@@ -237,16 +275,9 @@ function formatChoiceNode(node, ctx) {
                 l => l.choiceOptionId === opt.id
             );
             if (targetLink && targetLink.to) {
-                const targetNode = ctx.nodeMap.get(targetLink.to);
-                if (targetNode) {
-                    const childCtx = {
-                        ...ctx,
-                        depth: ctx.depth + 1,
-                        formatNode: ctx.formatNode
-                    };
-                    const childLines = ctx.formatNode(targetNode, childCtx);
-                    lines.push(...childLines.map(l => indent(ctx.depth + 1) + l.trimStart()));
-                }
+                const subVisited = new Set();
+                const subtreeLines = walkSubtree(targetLink.to, ctx.depth + 1, subVisited);
+                lines.push(...subtreeLines);
             }
         }
     } else {
@@ -261,17 +292,9 @@ function formatChoiceNode(node, ctx) {
                 l => l.choiceIndex === i || (l.choiceIndex === undefined && links.indexOf(l) === i)
             );
             if (targetLink && targetLink.to) {
-                const targetNode = ctx.nodeMap.get(targetLink.to);
-                if (targetNode) {
-                    const childCtx = {
-                        ...ctx,
-                        depth: ctx.depth + 1,
-                        formatNode: ctx.formatNode
-                    };
-                    const childLines = ctx.formatNode(targetNode, childCtx);
-                    // Child lines are already indented by childCtx.depth via their own formatters
-                    lines.push(...childLines);
-                }
+                const subVisited = new Set();
+                const subtreeLines = walkSubtree(targetLink.to, ctx.depth + 1, subVisited);
+                lines.push(...subtreeLines);
             }
         }
     }

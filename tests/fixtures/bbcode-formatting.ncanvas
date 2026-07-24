@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "savedAt": "2026-07-24T00:00:00.000Z",
+  "project": {
+    "title": "BBCode Formatting",
+    "notes": "Tests EXP-07 (BBCode passthrough). Body text with [b], [i], [color], [shake], [wait], [next], and inline random pick [[...]].",
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "Entry",
+        "title": "Start",
+        "body": "",
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "n1",
+        "type": "Dialog",
+        "title": "Nathan",
+        "body": "[b]Bold text[/b] and [i]italic text[/i] and [color=#ff0000]red text[/color] and [shake]shaky[/shake].",
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "n2",
+        "type": "Dialog",
+        "title": "Nathan",
+        "body": "Also [wait=2] a pause [next=auto] and then [[option1|option2|option3]] random.",
+        "x": 560,
+        "y": 80
+      }
+    ],
+    "links": [
+      {
+        "id": "l0",
+        "from": "n0",
+        "to": "n1"
+      },
+      {
+        "id": "l1",
+        "from": "n1",
+        "to": "n2"
+      }
+    ]
+  },
+  "ui": {
+    "activeFileId": "bbcode"
+  }
+}
