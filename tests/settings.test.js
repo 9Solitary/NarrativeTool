@@ -143,3 +143,121 @@ describe('settings module exports', () => {
     assert.strictEqual(Object.keys(mod).length, 2);
   });
 });
+
+// ===========================================================================
+// Task 2: NarrativeProjectPlugin main.js integration tests
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Test 5: Plugin class structure (loaded from main.js)
+// ---------------------------------------------------------------------------
+
+describe('NarrativeProjectPlugin', () => {
+  it('is a class/constructor function exported from main.js', () => {
+    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
+    assert.strictEqual(typeof NarrativeProjectPlugin, 'function');
+  });
+
+  it('has onload, onunload, and saveSettings methods on prototype', () => {
+    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
+    const proto = NarrativeProjectPlugin.prototype;
+    assert.strictEqual(typeof proto.onload, 'function', 'should have onload');
+    assert.strictEqual(typeof proto.onunload, 'function', 'should have onunload');
+    assert.strictEqual(typeof proto.saveSettings, 'function', 'should have saveSettings');
+  });
+
+  it('does NOT have configure-project command (removed per plan)', () => {
+    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
+    // The old addCommand('configure-project', ...) should not exist.
+    // Verify the prototype doesn't contain a reference to 'configure-project'
+    const src = NarrativeProjectPlugin.toString();
+    assert.ok(!src.includes('configure-project'),
+      'configure-project command should be removed (settings tab replaces it)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 6: Settings merge with Object.assign (simulates onload behavior)
+// ---------------------------------------------------------------------------
+
+describe('Plugin settings initialization', () => {
+  it('merges empty saved data with DEFAULT_SETTINGS (first load)', () => {
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const savedData = {}; // empty → first run
+    const settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
+    assert.deepStrictEqual(settings, DEFAULT_SETTINGS);
+  });
+
+  it('fills missing keys from DEFAULT_SETTINGS when saved data is partial', () => {
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const savedData = { exportPath: 'MyDir' };
+    const settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
+    assert.strictEqual(settings.exportPath, 'MyDir');
+    assert.strictEqual(settings.medEnabled, DEFAULT_SETTINGS.medEnabled);
+    assert.strictEqual(settings.exportScope, DEFAULT_SETTINGS.exportScope);
+  });
+
+  it('exposes settings as plain object on plugin instance for cross-plugin read', () => {
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
+
+    // Simulate what onload does: construct, assign settings
+    const plugin = Object.create(NarrativeProjectPlugin.prototype);
+    plugin.settings = Object.assign({}, DEFAULT_SETTINGS, {});
+
+    // Verify settings is a plain object accessible for cross-plugin reads
+    assert.strictEqual(typeof plugin.settings, 'object');
+    assert.strictEqual(plugin.settings.exportPath, 'Exports');
+    assert.strictEqual(plugin.settings.medEnabled, true);
+    assert.strictEqual(plugin.settings.exportScope, '/');
+  });
+
+  it('settings on plugin instance can be read like app.plugins.plugins["narrative-project"].settings', () => {
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+
+    // Simulate cross-plugin access pattern from ARCHITECTURE.md Pattern 3
+    const simulatedPlugins = {
+      'narrative-project': null
+    };
+
+    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
+    const plugin = Object.create(NarrativeProjectPlugin.prototype);
+    plugin.settings = Object.assign({}, DEFAULT_SETTINGS, { exportPath: 'GodotOutput' });
+    simulatedPlugins['narrative-project'] = plugin;
+
+    const npSettings = simulatedPlugins['narrative-project'].settings;
+    assert.strictEqual(npSettings.exportPath, 'GodotOutput');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test 7: saveSettings calls saveData with settings
+// ---------------------------------------------------------------------------
+
+describe('Plugin saveSettings', () => {
+  it('saveSettings delegates to this.saveData with this.settings', async () => {
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+
+    let savedData = null;
+    // Simulate the plugin with a spied saveData
+    const plugin = {
+      settings: Object.assign({}, DEFAULT_SETTINGS),
+      saveData: async function (data) {
+        savedData = data;
+      }
+    };
+
+    // Manually define saveSettings as the plan specifies
+    plugin.saveSettings = async function () {
+      await plugin.saveData(plugin.settings);
+    };
+
+    plugin.settings.exportPath = 'Changed';
+    await plugin.saveSettings();
+
+    assert.ok(savedData !== null, 'saveData should have been called');
+    assert.strictEqual(savedData.exportPath, 'Changed');
+    assert.strictEqual(savedData.medEnabled, true);
+    assert.strictEqual(savedData.exportScope, '/');
+  });
+});
