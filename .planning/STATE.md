@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-07-24T04:23:25.263Z"
+last_updated: "2026-07-24T07:56:39.082Z"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 8
-  percent: 50
+  total_plans: 12
+  completed_plans: 10
+  percent: 58
 ---
 
 # Project State: Obsidian Narrative Toolchain
@@ -23,16 +23,16 @@ progress:
 
 **What This Is:** A suite of Obsidian plugins enabling game narrative designers to organize worldbuilding, design chapter/quest flow, edit dialogue, and export directly to Godot Dialogue Manager format -- approaching Articy:draft narrative design capability within Obsidian.
 
-**Current Focus:** Phase 3 -- Entities + Flow Tools. Plan 03-01 and 03-02 complete. Plan 03-03 pending.
+**Current Focus:** Phase 4 -- Narrative Project. Plan 04-01 complete (Settings Tab). Plans 04-02 and 04-03 pending.
 
 ## Current Position
 
 | Attribute | Value |
 |-----------|-------|
-| Phase | 3 - Entities + Flow Tools |
-| Plans | 2 complete of 3 total (Phase 3) |
-| Status | Plan 03-02 complete -- Canvas templates (Flow Canvas + Flow Fragment) |
-| Progress | ████████████ 8/9 total plans, 2/4 phases complete |
+| Phase | 4 - Narrative Project |
+| Plans | 1 complete of 3 total (Phase 4) |
+| Status | Plan 04-01 complete -- Settings tab with Export Path, MED Enabled, Export Scope |
+| Progress | ██████████████ 10/12 total plans, 2/4 phases complete |
 
 ## Performance Metrics
 
@@ -41,7 +41,7 @@ progress:
 | Build time (esbuild, per plugin) | < 2s | -- |
 | Export time (single .ncanvas) | < 150ms | -- |
 | Export time (batch, 100 files) | < 30s | -- |
-| Test suite runtime | < 5s | ~108ms (157 tests) |
+| Test suite runtime | < 5s | ~125ms (203 tests) |
 | Plugin file size (per main.js) | < 500KB | 10KB (minified CJS) |
 
 ## Accumulated Context
@@ -60,6 +60,9 @@ progress:
 - Canvas templates accept optional idGenerator for test determinism (golden file testing)
 - Canvas JSON uses tab indentation to match Obsidian native format
 - addNodeToCanvas preserves unknown fields via spread pattern
+- Obsidian API mocking: Module._resolveFilename hook redirects 'obsidian' to tests/mocks/obsidian.js
+- DEFAULT_SETTINGS is Object.freeze() for immutability; cannot be mutated accidentally
+- Narrative Project settings exposed on plugin instance (not private) per ARCHITECTURE.md Pattern 3
 
 ### Open Questions
 
@@ -79,24 +82,25 @@ progress:
 - [x] Execute Plan 02-03: Plugin integration (Obsidian command, 157 total tests, 0 failures)
 - [x] Execute Plan 03-01: Entity Markdown templates (Character, Location, Quest, Item)
 - [x] Execute Plan 03-02: Canvas templates (Flow Canvas + Flow Fragment) — 12 tests, 0 failures
+- [x] Execute Plan 04-01: Narrative Project settings tab (DEFAULT_SETTINGS + NarrativeProjectSettingTab + main.js integration) — 203 tests, 0 failures
 
 ### Blockers
 
 - None
-- Phase 3 Plan 03-01 and 03-02 complete. Ready for Plan 03-03: Flow Tools plugin integration.
+- Phase 4 Plan 04-01 complete. Ready for Plan 04-02: Batch export command.
 
 ## Session Continuity
 
 ### Last Session
 
 - **Date:** 2026-07-24
-- **Action:** Executed Plan 03-02 (Canvas Templates) — Flow Canvas and Flow Fragment .canvas JSON templates
-- **Outcome:** 2 commits. canvas-utils.js (generateNodeId, createCanvas, addNodeToCanvas, addDialogueNodeToCanvas) and canvas-templates.js (createFlowCanvas, createFlowFragment). 5 golden files. 12 tests, 0 failures. TDD RED/GREEN cycle complete.
+- **Action:** Executed Plan 04-01 (Narrative Project Settings Tab) — Settings UI with Export Path, MED Enabled, Export Scope
+- **Outcome:** 5 commits. settings.js (DEFAULT_SETTINGS + NarrativeProjectSettingTab), main.js (rewritten integration), styles.css, settings.test.js (22 tests), obsidian.js (mock). 22 new tests (203 total, 0 failures). TDD RED/GREEN cycle for Tasks 1-2, direct implementation for Task 3.
 
 ### Next Steps
 
-1. Phase 3 Plan 03-03: Flow Tools plugin integration (Obsidian commands, file-menu, navigation)
-2. Phase 4: Narrative Project (reference validation, cross-file entity management)
+1. Phase 4 Plan 04-02: Batch export command (one-click export all .ncanvas in scope)
+2. Phase 4 Plan 04-03: Auto-export + status bar
 
 ---
 *State initialized: 2026-07-23*
