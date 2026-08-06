@@ -38,7 +38,7 @@
 **Depends on**: Phase 4 (v0.1, shipped)
 **Requirements**: ENG-01, BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-07
 **Success Criteria** (what must be TRUE):
-  1. User installs the single narrative-tool plugin and every command from the three v0.1 plugins (Flow Canvas 创建、Quest 创建、对话导出、批量导出、自动导出等) still appears with unchanged command IDs; existing settings keys and values migrate to the merged plugin automatically
+  1. User installs the single narrative-tool plugin and every command from the three v0.1 plugins (Flow Canvas 创建、Quest 创建、对话导出、批量导出、自动导出等) still appears, with all command IDs unified to the new narrative-tool: prefix (D-08 — D-09 documents the intentional break to existing hotkey bindings); existing settings keys and values migrate to the merged plugin automatically
   2. User can create a Quest entity via command palette and the file menu now includes "Add quest node" alongside the other 3 entity node types; the Quest .md template opens with correct content
   3. User can create Flow Canvas / Flow Fragment via commands and gets the proper Canvas templates; from a Dialogue canvas, user can navigate back to its Flow canvas via command and right-click menu
   4. User sets Export Path in settings once; both batch export and auto export write `.dialogue` files into that configured path
