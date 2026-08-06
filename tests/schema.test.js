@@ -1,11 +1,11 @@
 // schema.test.js -- Entity schema validation for FND-03
 //
-// Validates that all four shared/schema entity type definitions (Character,
+// Validates that all four engine/schema entity type definitions (Character,
 // Location, Quest, Item) export frozen templates, correct field lists, and
 // required-field arrays. Also verifies JSDoc type annotations are present
 // in every schema source file.
 //
-// FND-03: shared/schema/ defines Character, Location, Quest, Item with
+// FND-03: engine/schema/ defines Character, Location, Quest, Item with
 //         JSDoc annotations.
 
 const { describe, it } = require('node:test');
@@ -88,8 +88,8 @@ function assertFieldsAndRequired(importPath, fieldExport, reqExport, expectedKey
 // Test: Character schema
 // -------------------------------------------------------------------------
 
-describe('shared/schema/character.js — Character entity', () => {
-    const path = '../shared/schema/character.js';
+describe('plugins/narrative-tool/src/engine/schema/character.js — Character entity', () => {
+    const path = '../plugins/narrative-tool/src/engine/schema/character.js';
     const expectedKeys = [
         'id',
         'name',
@@ -116,7 +116,7 @@ describe('shared/schema/character.js — Character entity', () => {
 
     // JSDoc presence
     it('character.js has @typedef JSDoc annotation', () => {
-        assertHasJSDoc('shared/schema/character.js');
+        assertHasJSDoc('plugins/narrative-tool/src/engine/schema/character.js');
     });
 });
 
@@ -124,8 +124,8 @@ describe('shared/schema/character.js — Character entity', () => {
 // Test: Location schema
 // -------------------------------------------------------------------------
 
-describe('shared/schema/location.js — Location entity', () => {
-    const path = '../shared/schema/location.js';
+describe('plugins/narrative-tool/src/engine/schema/location.js — Location entity', () => {
+    const path = '../plugins/narrative-tool/src/engine/schema/location.js';
     const expectedKeys = [
         'id',
         'name',
@@ -149,7 +149,7 @@ describe('shared/schema/location.js — Location entity', () => {
     });
 
     it('location.js has @typedef JSDoc annotation', () => {
-        assertHasJSDoc('shared/schema/location.js');
+        assertHasJSDoc('plugins/narrative-tool/src/engine/schema/location.js');
     });
 });
 
@@ -157,8 +157,8 @@ describe('shared/schema/location.js — Location entity', () => {
 // Test: Quest schema
 // -------------------------------------------------------------------------
 
-describe('shared/schema/quest.js — Quest entity', () => {
-    const path = '../shared/schema/quest.js';
+describe('plugins/narrative-tool/src/engine/schema/quest.js — Quest entity', () => {
+    const path = '../plugins/narrative-tool/src/engine/schema/quest.js';
     const expectedKeys = [
         'id',
         'name',
@@ -185,7 +185,7 @@ describe('shared/schema/quest.js — Quest entity', () => {
     });
 
     it('quest.js has @typedef JSDoc annotation', () => {
-        assertHasJSDoc('shared/schema/quest.js');
+        assertHasJSDoc('plugins/narrative-tool/src/engine/schema/quest.js');
     });
 });
 
@@ -193,8 +193,8 @@ describe('shared/schema/quest.js — Quest entity', () => {
 // Test: Item schema
 // -------------------------------------------------------------------------
 
-describe('shared/schema/item.js — Item entity', () => {
-    const path = '../shared/schema/item.js';
+describe('plugins/narrative-tool/src/engine/schema/item.js — Item entity', () => {
+    const path = '../plugins/narrative-tool/src/engine/schema/item.js';
     const expectedKeys = [
         'id',
         'name',
@@ -219,6 +219,6 @@ describe('shared/schema/item.js — Item entity', () => {
     });
 
     it('item.js has @typedef JSDoc annotation', () => {
-        assertHasJSDoc('shared/schema/item.js');
+        assertHasJSDoc('plugins/narrative-tool/src/engine/schema/item.js');
     });
 });
