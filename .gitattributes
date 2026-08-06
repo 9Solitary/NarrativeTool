@@ -1,1 +1,2 @@
 tests/golden/*.dialogue text eol=lf
+tests/fixtures/*.md text eol=lf

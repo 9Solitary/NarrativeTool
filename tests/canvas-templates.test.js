@@ -48,14 +48,14 @@ let canvasUtils, canvasTemplates;
 let modulesAvailable = false;
 
 try {
-    canvasUtils = require('../plugins/flow-tools/src/canvas-utils');
+    canvasUtils = require('../plugins/narrative-tool/src/flow/canvas-utils');
     modulesAvailable = true;
 } catch (e) {
     canvasUtils = null;
 }
 
 try {
-    canvasTemplates = require('../plugins/flow-tools/src/canvas-templates');
+    canvasTemplates = require('../plugins/narrative-tool/src/flow/canvas-templates');
     modulesAvailable = true;
 } catch (e) {
     canvasTemplates = null;
