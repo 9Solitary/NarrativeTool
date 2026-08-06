@@ -201,6 +201,10 @@ class SuggestModal extends Modal {
 class Notice {
     constructor(message) {
         this.message = message;
+        // Static capture so tests can assert messages (05-04)
+        Notice._last = message;
+        Notice._all = Notice._all || [];
+        Notice._all.push(message);
         this.noticeEl = {
             _classSet: new Set(),
             className: '',
@@ -210,4 +214,18 @@ class Notice {
     }
 }
 
-module.exports = { Plugin, PluginSettingTab, Setting, Modal, SuggestModal, Notice };
+// Minimal TFile stub (05-04): path/basename/extension derived from the path
+class TFile {
+    constructor(path) {
+        this.path = path;
+        this.basename = path.split('/').pop().replace(/\.[^.]+$/, '');
+        this.extension = path.split('.').pop();
+    }
+}
+
+// normalizePath identity stub (05-04)
+function normalizePath(p) {
+    return p;
+}
+
+module.exports = { Plugin, PluginSettingTab, Setting, Modal, SuggestModal, Notice, TFile, normalizePath };
