@@ -130,6 +130,10 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         console.log('[Narrative Tool] unloaded');
     }
 
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
+
     // ================================================================
     // Command Registration (D-08)
     // ================================================================
