@@ -16,8 +16,8 @@
 //   T-02-07: Emit [#check] and [term] AFTER the Character: prefix + colon,
 //            within dialogue text body. (Handled by gd-format.js during body emission.)
 
-const { MED_TOKENS } = require('../../../shared/med-constants');
-const { TOKENS } = require('../../../shared/gd-constants');
+const { MED_TOKENS } = require('./med-constants');
+const { TOKENS } = require('./gd-constants');
 
 // -------------------------------------------------------------------------
 // Utility helpers
