@@ -6,11 +6,12 @@
 //   app.plugins.plugins['narrative-project'].settings
 
 const { Plugin } = require('obsidian');
-const { DEFAULT_SETTINGS, NarrativeProjectSettingTab } = require('./settings');
-const { StatusBarManager } = require('./status-bar');
-const { exportAllDialogues } = require('./batch-export');
-const { setupAutoExport, teardownAutoExport } = require('./auto-export');
-const { validateReferences } = require('./reference-validator');
+// 05-03: modules moved into the merged narrative-tool plugin — re-pointed (Rule 3 fix)
+const { DEFAULT_SETTINGS, NarrativeToolSettingTab } = require('../../narrative-tool/src/ui/settings');
+const { StatusBarManager } = require('../../narrative-tool/src/ui/status-bar');
+const { exportAllDialogues } = require('../../narrative-tool/src/commands/batch-export');
+const { setupAutoExport, teardownAutoExport } = require('../../narrative-tool/src/commands/auto-export');
+const { validateReferences } = require('../../narrative-tool/src/commands/reference-validator');
 
 module.exports = class NarrativeProjectPlugin extends Plugin {
     async onload() {
@@ -18,7 +19,7 @@ module.exports = class NarrativeProjectPlugin extends Plugin {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
         // 2. Register the settings tab so it appears in Obsidian Settings
-        this.addSettingTab(new NarrativeProjectSettingTab(this.app, this));
+        this.addSettingTab(new NarrativeToolSettingTab(this.app, this));
 
         // 3. Initialize the status bar for export progress feedback
         this.statusBar = new StatusBarManager(this);
@@ -65,7 +66,7 @@ module.exports = class NarrativeProjectPlugin extends Plugin {
                     return;
                 }
                 this.statusBar.setState('exporting', { count: 1 });
-                const { exportSingleFile } = require('./auto-export');
+                const { exportSingleFile } = require('../../narrative-tool/src/commands/auto-export');
                 const result = await exportSingleFile(
                     this.app, activeFile, this.settings.exportPath, this.settings.medEnabled
                 );

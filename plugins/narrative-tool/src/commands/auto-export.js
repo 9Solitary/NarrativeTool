@@ -8,26 +8,16 @@
 //   - setupAutoExport(plugin, onExported) → void
 //   - teardownAutoExport(plugin) → void
 //
-// Reuses Phase 2 dialogue-export exportEngine for format transformation.
-// Path logic mirrors batch-export.js but operates on single files only.
+// Output goes through the shared paths.js writeDialogueFile module, which
+// honors the configured export path (vault-relative, absolute, or alongside
+// the source when empty).
 //
-// 04-03: Auto-Export + Reference Validation
+// 05-03: moved into narrative-tool/src/commands/; BUG-03 fixed — output
+// honors exportPath via writeDialogueFile (previously wrote alongside the
+// source).
 
-const { exportEngine } = require('../../narrative-tool/src/engine/export-engine');
-
-// ---------------------------------------------------------------------------
-// Path normalization helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Normalize a path string: backslashes to forward slashes, no trailing slash.
- * @param {string} p
- * @returns {string}
- */
-function normalizePath(p) {
-    if (typeof p !== 'string') return '';
-    return p.replace(/\\/g, '/').replace(/\/$/, '');
-}
+const { exportEngine } = require('../engine/export-engine');
+const { writeDialogueFile } = require('./paths');
 
 // ---------------------------------------------------------------------------
 // 1. exportSingleFile — single-file .ncanvas → .dialogue export
@@ -36,12 +26,13 @@ function normalizePath(p) {
 /**
  * Export a single .ncanvas file to a .dialogue file.
  *
- * Reads the file, parses JSON, runs through exportEngine, writes output.
+ * Reads the file, parses JSON, runs through exportEngine, writes output
+ * via writeDialogueFile (honors exportPath).
  * Gracefully handles JSON parse errors and exportEngine exceptions.
  *
  * @param {Object} app - Obsidian App instance
- * @param {Object} file - TFile for the .ncanvas file (must have .path, .extension)
- * @param {string} exportPath - Vault-relative directory to write .dialogue output
+ * @param {Object} file - TFile for the .ncanvas file (must have .path, .basename, .extension)
+ * @param {string} exportPath - Export destination: '' (alongside source), absolute (fs), or vault-relative
  * @param {boolean} medEnabled - Passed through to exportEngine config
  * @returns {Promise<{ success: boolean, error?: string, path?: string }>}
  */
@@ -64,29 +55,16 @@ async function exportSingleFile(app, file, exportPath, medEnabled) {
         // 3. Run through export engine
         const dialogueText = exportEngine(ncanvasJson, { medEnabled: !!medEnabled });
 
-        // 4. Construct output path
-        // Mirror the file's vault path but replace .ncanvas with .dialogue,
-        // and prepend exportPath
-        const filePath = normalizePath(file.path);
-        const relativePath = filePath.replace(/\.ncanvas$/, '.dialogue');
-        const outDir = normalizePath(exportPath || '');
-        const outputPath = outDir ? `${outDir}/${relativePath}` : relativePath;
+        // 4. Write through the shared path module (honors exportPath)
+        const result = await writeDialogueFile(
+            app,
+            exportPath,
+            file.basename + '.dialogue',
+            file,
+            dialogueText
+        );
 
-        // 5. Ensure output directory exists (create folders recursively)
-        const outputDir = outputPath.substring(0, outputPath.lastIndexOf('/'));
-        if (outputDir) {
-            await ensureDirectory(app, outputDir);
-        }
-
-        // 6. Write output file (create or modify)
-        const existing = app.vault.getAbstractFileByPath(outputPath);
-        if (existing) {
-            await app.vault.modify(existing, dialogueText);
-        } else {
-            await app.vault.create(outputPath, dialogueText);
-        }
-
-        return { success: true, path: outputPath };
+        return { success: true, path: result.path };
     } catch (err) {
         return { success: false, error: err.message };
     }
@@ -164,30 +142,6 @@ function teardownAutoExport(plugin) {
     }
     if (plugin._autoExportQueue) {
         plugin._autoExportQueue.clear();
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Ensure a vault-relative directory path exists, creating folders as needed.
- *
- * @param {Object} app - Obsidian App instance
- * @param {string} dirPath - Vault-relative directory path (e.g. "Exports/Sub")
- */
-async function ensureDirectory(app, dirPath) {
-    const parts = normalizePath(dirPath).split('/').filter(Boolean);
-    let current = '';
-
-    for (const part of parts) {
-        const segment = current ? `${current}/${part}` : part;
-        const existing = app.vault.getAbstractFileByPath(segment);
-        if (!existing) {
-            await app.vault.createFolder(segment);
-        }
-        current = segment;
     }
 }
 

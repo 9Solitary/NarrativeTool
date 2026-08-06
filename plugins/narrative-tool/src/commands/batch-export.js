@@ -2,14 +2,15 @@
 //
 // Provides exportAllDialogues() which iterates over all .ncanvas files
 // within the configured exportScope, runs each through the dialogue
-// exportEngine, and writes .dialogue output files to exportPath.
+// exportEngine, and writes .dialogue output files into the configured
+// export path (vault-relative via vault API, absolute via node fs —
+// see the shared paths.js decision module).
 //
-// Reuses Phase 2 dialogue-export exportEngine for the actual format
-// transformation — this module handles file I/O and orchestration only.
-//
-// 04-02: Batch Export + Status Bar
+// 05-03: moved into narrative-tool/src/commands/; BUG-02 fixed — output
+// honors exportPath via writeDialogueFile (previously wrote at vault root).
 
-const { exportEngine } = require('../../narrative-tool/src/engine/export-engine');
+const { exportEngine } = require('../engine/export-engine');
+const { writeDialogueFile } = require('./paths');
 
 // ---------------------------------------------------------------------------
 // Path normalization helpers
@@ -24,26 +25,6 @@ function normalizePath(p) {
     return p.replace(/\\/g, '/').replace(/\/$/, '');
 }
 
-/**
- * Ensure a vault-relative directory path exists, creating folders as needed.
- *
- * @param {Object} app - Obsidian App instance
- * @param {string} dirPath - Vault-relative directory path (e.g. "Exports/Sub")
- */
-async function ensureDirectory(app, dirPath) {
-    const parts = normalizePath(dirPath).split('/').filter(Boolean);
-    let current = '';
-
-    for (const part of parts) {
-        const segment = current ? `${current}/${part}` : part;
-        const existing = app.vault.getAbstractFileByPath(segment);
-        if (!existing) {
-            await app.vault.createFolder(segment);
-        }
-        current = segment;
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Main export function
 // ---------------------------------------------------------------------------
@@ -52,14 +33,13 @@ async function ensureDirectory(app, dirPath) {
  * Export all .ncanvas files within exportScope to .dialogue files in exportPath.
  *
  * @param {Object} app - Obsidian App instance
- * @param {string} exportPath - Vault-relative directory to write .dialogue files
+ * @param {string} exportPath - Export destination: '' (alongside source), absolute (fs), or vault-relative
  * @param {string} exportScope - Vault path prefix to scope file discovery ("/" = all)
  * @param {boolean} medEnabled - Whether to include MED state extension syntax
  * @returns {Promise<{ exported: number, failed: number }>}
  */
 async function exportAllDialogues(app, exportPath, exportScope, medEnabled) {
     // Normalize inputs
-    const outDir = normalizePath(exportPath || '');
     const scopePrefix = normalizePath(exportScope || '/');
 
     // Collect all .ncanvas files in scope
@@ -109,44 +89,18 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled) {
             // 3. Run through export engine
             const dialogueText = exportEngine(ncanvasJson, { medEnabled: !!medEnabled });
 
-            // 4. Construct output path
-            // Remove scope prefix from file path to get relative path,
-            // then prepend exportPath
-            const filePath = normalizePath(file.path);
-            let relativePath;
-            if (scopeIsRoot) {
-                relativePath = filePath;
-            } else {
-                const sp = normalizePath(exportScope);
-                // Strip the scope prefix from the file path
-                if (filePath.startsWith(sp + '/')) {
-                    relativePath = filePath.substring(sp.length + 1);
-                } else if (filePath === sp) {
-                    relativePath = filePath.substring(filePath.lastIndexOf('/') + 1);
-                } else {
-                    relativePath = filePath;
-                }
+            // 4. Construct output filename (flat basename layout)
+            // outBasename = <basename>.dialogue; duplicate-basename prefix
+            // rule: if a file with that basename already exists at vault
+            // root, prefix the parent dir name to disambiguate.
+            let outBasename = file.basename + '.dialogue';
+            const parentDirName = normalizePath(file.path).split('/').slice(0, -1).pop();
+            if (parentDirName && app.vault.getAbstractFileByPath(outBasename)) {
+                outBasename = parentDirName + '-' + outBasename;
             }
 
-            // Replace .ncanvas extension with .dialogue
-            const dialogueRelPath = relativePath.replace(/\.ncanvas$/, '.dialogue');
-            const outputPath = outDir
-                ? `${outDir}/${dialogueRelPath}`
-                : dialogueRelPath;
-
-            // 5. Ensure output directory exists
-            const outputDir = outputPath.substring(0, outputPath.lastIndexOf('/'));
-            if (outputDir) {
-                await ensureDirectory(app, outputDir);
-            }
-
-            // 6. Write output file (create or modify)
-            const existing = app.vault.getAbstractFileByPath(outputPath);
-            if (existing) {
-                await app.vault.modify(existing, dialogueText);
-            } else {
-                await app.vault.create(outputPath, dialogueText);
-            }
+            // 5. Write through the shared path module (honors exportPath)
+            const result = await writeDialogueFile(app, exportPath, outBasename, file, dialogueText);
 
             exported++;
         } catch (err) {

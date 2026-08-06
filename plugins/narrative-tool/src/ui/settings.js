@@ -1,6 +1,6 @@
 // settings.js — Narrative Project settings tab
 //
-// Provides DEFAULT_SETTINGS constants and NarrativeProjectSettingTab class.
+// Provides DEFAULT_SETTINGS constants and NarrativeToolSettingTab class.
 // Follows ARCHITECTURE.md Pattern 3: Shared Settings via Plugin Data API.
 //
 // DEFAULT_SETTINGS values align with:
@@ -26,10 +26,10 @@ const DEFAULT_SETTINGS = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
-// NarrativeProjectSettingTab — Obsidian Settings tab for project configuration
+// NarrativeToolSettingTab — Obsidian Settings tab for project configuration
 // ---------------------------------------------------------------------------
 
-class NarrativeProjectSettingTab extends PluginSettingTab {
+class NarrativeToolSettingTab extends PluginSettingTab {
     constructor(app, plugin) {
         super(app, plugin);
         this.plugin = plugin;
@@ -81,4 +81,4 @@ class NarrativeProjectSettingTab extends PluginSettingTab {
 // Exports
 // ---------------------------------------------------------------------------
 
-module.exports = { DEFAULT_SETTINGS, NarrativeProjectSettingTab };
+module.exports = { DEFAULT_SETTINGS, NarrativeToolSettingTab };

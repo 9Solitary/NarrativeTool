@@ -145,4 +145,69 @@ class Plugin {
     }
 }
 
-module.exports = { Plugin, PluginSettingTab, Setting };
+// ---------------------------------------------------------------------------
+// Modal / SuggestModal / Notice stubs (added 05-03: ui/modals.js and
+// ui/notify.js load under the mock)
+// ---------------------------------------------------------------------------
+
+class Modal {
+    constructor(app) {
+        this.app = app;
+        this.titleEl = { setText(_t) {} };
+        this.contentEl = {
+            createEl(tag, opts) {
+                return {
+                    tag: tag,
+                    style: {},
+                    _value: '',
+                    addEventListener() {},
+                    setText(text) { this.textContent = text; },
+                    textContent: (opts && opts.text) || '',
+                    placeholder: (opts && opts.placeholder) || '',
+                    focus() {}
+                };
+            }
+        };
+        this._closed = false;
+    }
+
+    open() {
+        this._open = true;
+        return this;
+    }
+
+    close() {
+        this._closed = true;
+        this._open = false;
+        if (typeof this.onClose === 'function') this.onClose();
+        return this;
+    }
+}
+
+class SuggestModal extends Modal {
+    constructor(app) {
+        super(app);
+    }
+
+    getSuggestions(query) {
+        return [];
+    }
+
+    renderSuggestion(_item, _el) {}
+
+    onChooseSuggestion(_item, _evt) {}
+}
+
+class Notice {
+    constructor(message) {
+        this.message = message;
+        this.noticeEl = {
+            _classSet: new Set(),
+            className: '',
+            addClass(cls) { this._classSet.add(cls); this.className = Array.from(this._classSet).join(' '); return this; },
+            removeClass(cls) { this._classSet.delete(cls); this.className = Array.from(this._classSet).join(' '); return this; }
+        };
+    }
+}
+
+module.exports = { Plugin, PluginSettingTab, Setting, Modal, SuggestModal, Notice };

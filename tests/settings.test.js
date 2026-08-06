@@ -1,6 +1,6 @@
-// settings.test.js -- NarrativeProjectSettingTab unit tests
+// settings.test.js -- NarrativeToolSettingTab unit tests
 //
-// Validates DEFAULT_SETTINGS constants and NarrativeProjectSettingTab
+// Validates DEFAULT_SETTINGS constants and NarrativeToolSettingTab
 // class structure. Tests are pure unit tests that run without Obsidian
 // by intercepting the 'obsidian' require via Module._resolveFilename.
 //
@@ -41,7 +41,7 @@ Module._resolveFilename = function (request, parent, isMain, options) {
 
 describe('DEFAULT_SETTINGS', () => {
   it('contains exportPath, medEnabled, and exportScope keys', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
 
     assert.ok('exportPath' in DEFAULT_SETTINGS, 'should have exportPath');
     assert.ok('medEnabled' in DEFAULT_SETTINGS, 'should have medEnabled');
@@ -49,55 +49,55 @@ describe('DEFAULT_SETTINGS', () => {
   });
 
   it('exportPath defaults to "Exports"', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     assert.strictEqual(DEFAULT_SETTINGS.exportPath, 'Exports');
   });
 
   it('medEnabled defaults to true', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     assert.strictEqual(DEFAULT_SETTINGS.medEnabled, true);
   });
 
   it('exportScope defaults to "/"', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     assert.strictEqual(DEFAULT_SETTINGS.exportScope, '/');
   });
 
   it('has exactly three keys (no extras)', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     assert.deepStrictEqual(Object.keys(DEFAULT_SETTINGS).sort(), ['exportPath', 'exportScope', 'medEnabled']);
   });
 
   it('is a frozen/safe read-only object', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     assert.ok(Object.isFrozen(DEFAULT_SETTINGS) || typeof DEFAULT_SETTINGS === 'object',
       'DEFAULT_SETTINGS should be frozen or a safe object');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Test 2: NarrativeProjectSettingTab class structure
+// Test 2: NarrativeToolSettingTab class structure
 // ---------------------------------------------------------------------------
 
-describe('NarrativeProjectSettingTab', () => {
+describe('NarrativeToolSettingTab', () => {
   it('is a class/constructor function', () => {
-    const { NarrativeProjectSettingTab } = require('../plugins/narrative-project/src/settings');
-    assert.strictEqual(typeof NarrativeProjectSettingTab, 'function');
+    const { NarrativeToolSettingTab } = require('../plugins/narrative-tool/src/ui/settings');
+    assert.strictEqual(typeof NarrativeToolSettingTab, 'function');
   });
 
   it('can be instantiated (as a class definition check)', () => {
-    const { NarrativeProjectSettingTab } = require('../plugins/narrative-project/src/settings');
-    assert.ok(NarrativeProjectSettingTab.name === 'NarrativeProjectSettingTab' || NarrativeProjectSettingTab.prototype);
+    const { NarrativeToolSettingTab } = require('../plugins/narrative-tool/src/ui/settings');
+    assert.ok(NarrativeToolSettingTab.name === 'NarrativeToolSettingTab' || NarrativeToolSettingTab.prototype);
   });
 
   it('has display method on prototype', () => {
-    const { NarrativeProjectSettingTab } = require('../plugins/narrative-project/src/settings');
-    assert.strictEqual(typeof NarrativeProjectSettingTab.prototype.display, 'function');
+    const { NarrativeToolSettingTab } = require('../plugins/narrative-tool/src/ui/settings');
+    assert.strictEqual(typeof NarrativeToolSettingTab.prototype.display, 'function');
   });
 
   it('display is defined as an instance method', () => {
-    const { NarrativeProjectSettingTab } = require('../plugins/narrative-project/src/settings');
-    const fn = NarrativeProjectSettingTab.prototype.display;
+    const { NarrativeToolSettingTab } = require('../plugins/narrative-tool/src/ui/settings');
+    const fn = NarrativeToolSettingTab.prototype.display;
     assert.ok(typeof fn === 'function');
     assert.ok(fn.length >= 0, 'display should be callable');
   });
@@ -109,13 +109,13 @@ describe('NarrativeProjectSettingTab', () => {
 
 describe('Settings merge behavior', () => {
   it('Object.assign merge with empty data returns defaults unchanged', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     const merged = Object.assign({}, DEFAULT_SETTINGS, {});
     assert.deepStrictEqual(merged, DEFAULT_SETTINGS);
   });
 
   it('Object.assign merge with partial data fills missing keys from defaults', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     const saved = { exportPath: 'MyDir' };
     const merged = Object.assign({}, DEFAULT_SETTINGS, saved);
     assert.strictEqual(merged.exportPath, 'MyDir');
@@ -124,7 +124,7 @@ describe('Settings merge behavior', () => {
   });
 
   it('Object.assign merge with full data overrides all defaults', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     const saved = { exportPath: 'Custom', medEnabled: false, exportScope: '/Dialogue' };
     const merged = Object.assign({}, DEFAULT_SETTINGS, saved);
     assert.deepStrictEqual(merged, saved);
@@ -136,10 +136,10 @@ describe('Settings merge behavior', () => {
 // ---------------------------------------------------------------------------
 
 describe('settings module exports', () => {
-  it('exports DEFAULT_SETTINGS and NarrativeProjectSettingTab', () => {
-    const mod = require('../plugins/narrative-project/src/settings');
+  it('exports DEFAULT_SETTINGS and NarrativeToolSettingTab', () => {
+    const mod = require('../plugins/narrative-tool/src/ui/settings');
     assert.ok('DEFAULT_SETTINGS' in mod);
-    assert.ok('NarrativeProjectSettingTab' in mod);
+    assert.ok('NarrativeToolSettingTab' in mod);
     assert.strictEqual(Object.keys(mod).length, 2);
   });
 });
@@ -182,14 +182,14 @@ describe('NarrativeProjectPlugin', () => {
 
 describe('Plugin settings initialization', () => {
   it('merges empty saved data with DEFAULT_SETTINGS (first load)', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     const savedData = {}; // empty → first run
     const settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
     assert.deepStrictEqual(settings, DEFAULT_SETTINGS);
   });
 
   it('fills missing keys from DEFAULT_SETTINGS when saved data is partial', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     const savedData = { exportPath: 'MyDir' };
     const settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
     assert.strictEqual(settings.exportPath, 'MyDir');
@@ -198,7 +198,7 @@ describe('Plugin settings initialization', () => {
   });
 
   it('exposes settings as plain object on plugin instance for cross-plugin read', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
     const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
 
     // Simulate what onload does: construct, assign settings
@@ -213,7 +213,7 @@ describe('Plugin settings initialization', () => {
   });
 
   it('settings on plugin instance can be read like app.plugins.plugins["narrative-project"].settings', () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
 
     // Simulate cross-plugin access pattern from ARCHITECTURE.md Pattern 3
     const simulatedPlugins = {
@@ -236,7 +236,7 @@ describe('Plugin settings initialization', () => {
 
 describe('Plugin saveSettings', () => {
   it('saveSettings delegates to this.saveData with this.settings', async () => {
-    const { DEFAULT_SETTINGS } = require('../plugins/narrative-project/src/settings');
+    const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
 
     let savedData = null;
     // Simulate the plugin with a spied saveData

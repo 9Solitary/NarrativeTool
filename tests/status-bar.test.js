@@ -43,7 +43,7 @@ function createMockPlugin() {
 // ===========================================================================
 
 describe('StatusBarManager', () => {
-    const { StatusBarManager } = require('../plugins/narrative-project/src/status-bar');
+    const { StatusBarManager } = require('../plugins/narrative-tool/src/ui/status-bar');
 
     // -----------------------------------------------------------------------
     // Test 1: Construction creates status bar DOM element
@@ -55,8 +55,8 @@ describe('StatusBarManager', () => {
 
         assert.ok(manager.element, 'should have an element property');
         assert.strictEqual(typeof manager.element.innerHTML, 'string', 'element should support innerHTML');
-        assert.ok(manager.element.className.includes('narrative-project-status'),
-            'should have narrative-project-status class');
+        assert.ok(manager.element.className.includes('narrative-tool-status'),
+            'should have narrative-tool-status class');
 
         manager.destroy();
     });

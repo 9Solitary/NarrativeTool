@@ -9,7 +9,7 @@ class StatusBarManager {
     constructor(plugin) {
         this.plugin = plugin;
         this.element = this.plugin.addStatusBarItem();
-        this.element.addClass('narrative-project-status');
+        this.element.addClass('narrative-tool-status');
         this.setState('pending');
     }
 

@@ -169,7 +169,7 @@ function makeNcanvasJson(title) {
 // ===========================================================================
 
 describe('exportSingleFile', () => {
-    const { exportSingleFile } = require('../plugins/narrative-project/src/auto-export');
+    const { exportSingleFile } = require('../plugins/narrative-tool/src/commands/auto-export');
 
     // -----------------------------------------------------------------------
     // Test 1: exportSingleFile creates .dialogue file with exportEngine output
@@ -178,20 +178,21 @@ describe('exportSingleFile', () => {
     it('creates .dialogue file with exportEngine output in exportPath', async () => {
         const vault = new MockVault();
         vault.addFolder('Exports');
-        vault.addFolder('Exports/Dialogues');
-        const ncanvasFile = vault.addFile('Dialogues/test.ncanvas', makeNcanvasJson('Test'));
+        vault.addFile('Dialogues/test.ncanvas', makeNcanvasJson('Test'));
         const app = createMockApp(vault);
 
         const tfile = vault.getFiles().find(f => f.extension === 'ncanvas');
         const result = await exportSingleFile(app, tfile, 'Exports', true);
 
         assert.strictEqual(result.success, true, 'should succeed');
-        assert.ok(result.path, 'should return output path');
-        assert.ok(result.path.includes('test.dialogue'), 'output path should be .dialogue');
+        // BUG-03: output lands under the configured export path, not alongside the source
+        assert.strictEqual(result.path, 'Exports/test.dialogue',
+            'output path should be <exportPath>/<basename>.dialogue');
 
-        // Verify .dialogue exists
+        // Verify .dialogue exists under Exports/
         const dialFiles = vault.getFiles().filter(f => f.extension === 'dialogue');
         assert.strictEqual(dialFiles.length, 1, 'should have 1 .dialogue file');
+        assert.strictEqual(dialFiles[0].path, 'Exports/test.dialogue');
     });
 
     // -----------------------------------------------------------------------
@@ -243,7 +244,7 @@ describe('exportSingleFile', () => {
 // ===========================================================================
 
 describe('setupAutoExport', () => {
-    const { setupAutoExport, teardownAutoExport } = require('../plugins/narrative-project/src/auto-export');
+    const { setupAutoExport, teardownAutoExport } = require('../plugins/narrative-tool/src/commands/auto-export');
 
     // -----------------------------------------------------------------------
     // Test 4: registers vault.on('modify') listener for .ncanvas files
@@ -351,7 +352,7 @@ describe('setupAutoExport', () => {
 // ===========================================================================
 
 describe('teardownAutoExport', () => {
-    const { setupAutoExport, teardownAutoExport } = require('../plugins/narrative-project/src/auto-export');
+    const { setupAutoExport, teardownAutoExport } = require('../plugins/narrative-tool/src/commands/auto-export');
 
     // -----------------------------------------------------------------------
     // Test 7: teardown clears timer and queue, no further exports triggered

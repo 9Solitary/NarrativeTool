@@ -144,7 +144,7 @@ function makeGroupNode(id) {
 // ===========================================================================
 
 describe('validateReferences', () => {
-    const { validateReferences } = require('../plugins/narrative-project/src/reference-validator');
+    const { validateReferences } = require('../plugins/narrative-tool/src/commands/reference-validator');
 
     // -----------------------------------------------------------------------
     // Test 1: Scans .canvas files, extracts file nodes → .ncanvas refs

@@ -152,7 +152,7 @@ function makeBrokenNcanvas() {
 // ===========================================================================
 
 describe('exportAllDialogues', () => {
-    const { exportAllDialogues } = require('../plugins/narrative-project/src/batch-export');
+    const { exportAllDialogues } = require('../plugins/narrative-tool/src/commands/batch-export');
 
     // -----------------------------------------------------------------------
     // Test 1: Exports all .ncanvas files in scope
@@ -173,10 +173,15 @@ describe('exportAllDialogues', () => {
         assert.strictEqual(result.exported, 2, 'should export 2 files');
         assert.strictEqual(result.failed, 0, 'should have 0 failures');
 
-        // Verify output files were created
+        // Verify output files were created under the export path
         const files = vault.getFiles();
         const dialogueFiles = files.filter(f => f.extension === 'dialogue');
         assert.strictEqual(dialogueFiles.length, 2, 'should create 2 .dialogue files');
+        const dialoguePaths = dialogueFiles.map(f => f.path);
+        assert.ok(dialoguePaths.includes('Exports/chapter1.dialogue'),
+            'chapter1.dialogue should land under Exports/');
+        assert.ok(dialoguePaths.includes('Exports/chapter2.dialogue'),
+            'chapter2.dialogue should land under Exports/');
     });
 
     // -----------------------------------------------------------------------
@@ -232,13 +237,12 @@ describe('exportAllDialogues', () => {
     });
 
     // -----------------------------------------------------------------------
-    // Test 5: Export path respects subdirectory structure
+    // Test 5: Flat basename layout under export path
     // -----------------------------------------------------------------------
 
-    it('mirrors subdirectory structure in export path', async () => {
+    it('writes flat basename output under the export path', async () => {
         const vault = new MockVault();
         vault.addFolder('Exports');
-        vault.addFolder('Exports/Sub');
         vault.addFile('Root.ncanvas', makeNcanvasJson('Root'));
         vault.addFile('Sub/child.ncanvas', makeNcanvasJson('Child'));
 
@@ -248,11 +252,35 @@ describe('exportAllDialogues', () => {
         assert.strictEqual(result.exported, 2);
         assert.strictEqual(result.failed, 0);
 
-        // Check output paths
+        // Check output paths — both land directly under the export path
         const files = vault.getFiles();
         const dialoguePaths = files.filter(f => f.extension === 'dialogue').map(f => f.path);
-        assert.ok(dialoguePaths.some(p => p.includes('Root.dialogue')), 'should have Root.dialogue');
-        assert.ok(dialoguePaths.some(p => p.includes('Sub/child.dialogue')), 'should have child.dialogue in Sub/');
+        assert.ok(dialoguePaths.includes('Exports/Root.dialogue'), 'should have Exports/Root.dialogue');
+        assert.ok(dialoguePaths.includes('Exports/child.dialogue'), 'should have Exports/child.dialogue');
+    });
+
+    // -----------------------------------------------------------------------
+    // Test 5b: Duplicate basename prefix rule
+    // -----------------------------------------------------------------------
+
+    it('prefixes parent dir name when basename collides with a vault-root file', async () => {
+        const vault = new MockVault();
+        vault.addFolder('Exports');
+        vault.addFile('child.dialogue', 'pre-existing vault-root file');
+        vault.addFile('Sub/child.ncanvas', makeNcanvasJson('Child'));
+
+        const app = createMockApp(vault);
+        const result = await exportAllDialogues(app, 'Exports', '/', true);
+
+        assert.strictEqual(result.exported, 1);
+        assert.strictEqual(result.failed, 0);
+
+        // Exported file must not clobber the existing basename — parent dir prefixed
+        const dialoguePaths = vault.getFiles().filter(f => f.extension === 'dialogue').map(f => f.path);
+        assert.ok(dialoguePaths.includes('Exports/Sub-child.dialogue'),
+            'should prefix parent dir name on basename collision');
+        assert.ok(!dialoguePaths.includes('Exports/child.dialogue'),
+            'should not write the colliding bare basename into Exports/');
     });
 
     // -----------------------------------------------------------------------
