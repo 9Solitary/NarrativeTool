@@ -25,7 +25,7 @@
 
 **Milestone Goal:** 修复 v0.1 所有已知差距 + 实现用户反馈的核心功能（Choice 循环、共享去重）+ 工程化打磨（插件合并、一键构建、中文化），交付完整、稳定、可部署的正式版。
 
-- [ ] **Phase 5: Plugin Merge + Bug Fixes** — 三插件合并为 narrative-tool，v0.1 的 7 项已知缺陷全部修复
+- [x] **Phase 5: Plugin Merge + Bug Fixes** — 三插件合并为 narrative-tool，v0.1 的 7 项已知缺陷全部修复 (completed 2026-08-06)
 - [ ] **Phase 6: Engine Features** — Choice 循环返回 + 共享内容去重，导出引擎两遍式改造
 - [ ] **Phase 7: Build + Deployment** — npm run build 一键构建，output/ 部署产物目录
 - [ ] **Phase 8: UX** — 全面中文化、Export Path 浏览按钮、导出状态反馈优化
@@ -50,7 +50,7 @@ Plans:
 - [x] 05-02-PLAN.md — Flow layer: git mv flow modules + schema into engine/schema, BUG-01 restore createQuestMd + golden + tests
 - [x] 05-03-PLAN.md — Commands/UI layer: shared paths module fixes BUG-02/03, export-current dedup, modals/notify/nc-bridge, settings+status-bar renames
 - [x] 05-04-PLAN.md — Plugin identity + merged main.js: 10 narrative-tool: commands, D-06 migration, BUG-04/05/06/07 wiring, merge-smoke + navigation tests
-- [ ] 05-05-PLAN.md — Delete legacy plugins, esbuild build, full suite + golden byte-identical verification
+- [x] 05-05-PLAN.md — Delete legacy plugins, esbuild build, full suite + golden byte-identical verification
 **UI hint**: yes
 
 ### Phase 6: Engine Features
@@ -106,7 +106,7 @@ Plans:
 | 2. Dialogue Export | v0.1 | 3/3 | Complete | 2026-07-24 |
 | 3. Entities + Flow Tools | v0.1 | 3/3 | Complete | 2026-07-24 |
 | 4. Narrative Project | v0.1 | 3/3 | Complete | 2026-07-24 |
-| 5. Plugin Merge + Bug Fixes | v1.0 | 4/5 | In Progress|  |
+| 5. Plugin Merge + Bug Fixes | v1.0 | 5/5 | Complete   | 2026-08-06 |
 | 6. Engine Features | v1.0 | 0/0 | Not started | - |
 | 7. Build + Deployment | v1.0 | 0/0 | Not started | - |
 | 8. UX | v1.0 | 0/0 | Not started | - |
