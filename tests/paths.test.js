@@ -221,6 +221,19 @@ describe('writeDialogueFile (empty export path)', () => {
         assert.ok(vault.getAbstractFileByPath('Dialogues/Innkeeper.dialogue'),
             'file should exist alongside the source');
     });
+
+    it('honors a disambiguated outFilename in the source directory (CR-01)', async () => {
+        const vault = new MockVault();
+        vault.addFile('Dialogues/Sub/Innkeeper.ncanvas', '{}');
+        const app = createMockApp(vault);
+        const sourceFile = vault.getFiles().find(f => f.extension === 'ncanvas');
+
+        const result = await writeDialogueFile(app, '', 'Sub-Innkeeper.dialogue', sourceFile, 'content');
+
+        assert.deepStrictEqual(result, { mode: 'vault', path: 'Dialogues/Sub/Sub-Innkeeper.dialogue' });
+        assert.ok(vault.getAbstractFileByPath('Dialogues/Sub/Sub-Innkeeper.dialogue'),
+            'disambiguated file should exist alongside the source');
+    });
 });
 
 // ===========================================================================

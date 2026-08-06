@@ -10,6 +10,8 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const Module = require('node:module');
 
@@ -260,13 +262,14 @@ describe('exportAllDialogues', () => {
     });
 
     // -----------------------------------------------------------------------
-    // Test 5b: Duplicate basename prefix rule
+    // Test 5b: Duplicate basename prefix rule (CR-01 — checked against the
+    // actual write target, i.e. inside the export dir, not the vault root)
     // -----------------------------------------------------------------------
 
-    it('prefixes parent dir name when basename collides with a vault-root file', async () => {
+    it('prefixes parent dir name when basename collides inside the export dir', async () => {
         const vault = new MockVault();
         vault.addFolder('Exports');
-        vault.addFile('child.dialogue', 'pre-existing vault-root file');
+        vault.addFile('Exports/child.dialogue', 'pre-existing export-dir file');
         vault.addFile('Sub/child.ncanvas', makeNcanvasJson('Child'));
 
         const app = createMockApp(vault);
@@ -278,9 +281,69 @@ describe('exportAllDialogues', () => {
         // Exported file must not clobber the existing basename — parent dir prefixed
         const dialoguePaths = vault.getFiles().filter(f => f.extension === 'dialogue').map(f => f.path);
         assert.ok(dialoguePaths.includes('Exports/Sub-child.dialogue'),
-            'should prefix parent dir name on basename collision');
-        assert.ok(!dialoguePaths.includes('Exports/child.dialogue'),
-            'should not write the colliding bare basename into Exports/');
+            'should prefix parent dir name on basename collision inside the export dir');
+        assert.strictEqual(dialoguePaths.filter(p => p === 'Exports/child.dialogue').length, 1,
+            'pre-existing bare-basename file must not be clobbered');
+    });
+
+    it('does not silently overwrite a same-basename export from another folder (CR-01)', async () => {
+        const vault = new MockVault();
+        vault.addFolder('Exports');
+        vault.addFile('A/inn.ncanvas', makeNcanvasJson('A'));
+        vault.addFile('B/inn.ncanvas', makeNcanvasJson('B'));
+
+        const app = createMockApp(vault);
+        const result = await exportAllDialogues(app, 'Exports', '/', true);
+
+        assert.strictEqual(result.exported, 2);
+        assert.strictEqual(result.failed, 0);
+
+        const dialoguePaths = vault.getFiles().filter(f => f.extension === 'dialogue').map(f => f.path);
+        assert.ok(dialoguePaths.includes('Exports/inn.dialogue'),
+            'first source should keep the bare basename');
+        assert.ok(dialoguePaths.includes('Exports/B-inn.dialogue'),
+            'second same-basename source must be prefixed with its parent dir');
+        assert.strictEqual(dialoguePaths.length, 2, 'both exports must survive (no clobber)');
+    });
+
+    it('honors the disambiguated name in alongside-source mode (empty exportPath)', async () => {
+        const vault = new MockVault();
+        vault.addFile('Sub/child.dialogue', 'pre-existing alongside file');
+        vault.addFile('Sub/child.ncanvas', makeNcanvasJson('Child'));
+
+        const app = createMockApp(vault);
+        const result = await exportAllDialogues(app, '', '/', true);
+
+        assert.strictEqual(result.exported, 1);
+        assert.strictEqual(result.failed, 0);
+
+        const dialoguePaths = vault.getFiles().filter(f => f.extension === 'dialogue').map(f => f.path);
+        assert.ok(dialoguePaths.includes('Sub/Sub-child.dialogue'),
+            'alongside-source export should honor the parent-dir prefix on collision');
+        assert.strictEqual(vault.getAbstractFileByPath('Sub/child.dialogue')._content,
+            'pre-existing alongside file', 'pre-existing file must not be clobbered');
+    });
+
+    it('detects basename collisions on the filesystem for absolute export paths', async () => {
+        const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nt-batch-'));
+        try {
+            const vault = new MockVault();
+            vault.addFile('A/inn.ncanvas', makeNcanvasJson('A'));
+            vault.addFile('B/inn.ncanvas', makeNcanvasJson('B'));
+
+            const app = createMockApp(vault);
+            const result = await exportAllDialogues(app, tmp, '/', true);
+
+            assert.strictEqual(result.exported, 2);
+            assert.strictEqual(result.failed, 0);
+
+            assert.ok(fs.existsSync(path.join(tmp, 'inn.dialogue')),
+                'first same-basename source should land as inn.dialogue');
+            assert.ok(fs.existsSync(path.join(tmp, 'B-inn.dialogue')),
+                'second same-basename source should be disambiguated on disk');
+        } finally {
+            fs.rmSync(tmp, { recursive: true, force: true });
+        }
     });
 
     // -----------------------------------------------------------------------

@@ -308,9 +308,16 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             return;
         }
 
-        // Step 2: Build template params with defaults
+        // Step 2: Build template params with defaults.
+        // The file is named from the slug, so the frontmatter id must use
+        // the same slug — a raw unslugified id ("Bob Smith") would produce
+        // quest references (giver_character_id, [[Bob Smith]] links) that
+        // resolve against filenames and silently break (WR-03).
         const slug = slugify(id.trim());
-        const params = { id: id.trim(), name: name.trim() };
+        const params = { id: slug, name: name.trim() };
+        if (slug !== id.trim()) {
+            notify(`ID normalized to "${slug}" (filename-safe)`);
+        }
 
         // Add entity-specific defaults based on type
         switch (cmd.entityType) {
@@ -619,9 +626,12 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             notify('No .ncanvas files found in vault');
             return '';
         }
+        // The suggester resolves null when dismissed (WR-02) — resolve ''
+        // here so a cancelled pick returns the documented empty string
+        // instead of leaving the awaiting command flow hanging forever.
         return new Promise((resolve) => {
             new FileSuggesterModal(this.app, ncanvasFiles, (file) => {
-                resolve(file.path);
+                resolve(file ? file.path : '');
             }).open();
         });
     }
@@ -636,9 +646,10 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             notify(`No ${entityType} .md files found in vault`);
             return '';
         }
+        // See _pickNcanvasFile — cancelled picks resolve '' (WR-02).
         return new Promise((resolve) => {
             new FileSuggesterModal(this.app, files, (file) => {
-                resolve(file.path);
+                resolve(file ? file.path : '');
             }).open();
         });
     }

@@ -73,9 +73,14 @@ async function writeDialogueFile(app, exportPath, outFilename, sourceFile, conte
     // produce double-separator paths in the vault-relative branch.
     const dir = (exportPath || '').trim().replace(/[\\/]+$/, '');
 
-    // Empty export path -> output alongside the source file (vault mode)
+    // Empty export path -> output alongside the source file (vault mode).
+    // When an explicit outFilename is given (e.g. batch-export's
+    // disambiguated '<parentDir>-<basename>.dialogue'), honor it inside the
+    // source's directory; otherwise derive the name from the source path.
     if (!dir) {
-        const outPath = sourceFile.path.replace(/\.ncanvas$/, '.dialogue');
+        const outPath = outFilename
+            ? sourceFile.path.replace(/[^/]+$/, '') + outFilename
+            : sourceFile.path.replace(/\.ncanvas$/, '.dialogue');
         const existing = app.vault.getAbstractFileByPath(outPath);
         if (existing) {
             await app.vault.modify(existing, content);

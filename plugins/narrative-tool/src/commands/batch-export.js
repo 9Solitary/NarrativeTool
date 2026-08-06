@@ -9,8 +9,10 @@
 // 05-03: moved into narrative-tool/src/commands/; BUG-02 fixed — output
 // honors exportPath via writeDialogueFile (previously wrote at vault root).
 
+const fs = require('node:fs');
+const path = require('node:path');
 const { exportEngine } = require('../engine/export-engine');
-const { writeDialogueFile } = require('./paths');
+const { isAbsoluteExportPath, writeDialogueFile } = require('./paths');
 
 // ---------------------------------------------------------------------------
 // Path normalization helpers
@@ -91,11 +93,21 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled) {
 
             // 4. Construct output filename (flat basename layout)
             // outBasename = <basename>.dialogue; duplicate-basename prefix
-            // rule: if a file with that basename already exists at vault
-            // root, prefix the parent dir name to disambiguate.
+            // rule: check the ACTUAL write target resolved by
+            // writeDialogueFile (the export dir, or the alongside-source
+            // path) — the old check against the vault root never matched
+            // after BUG-02 routed output into exportPath, so same-basename
+            // sources silently overwrote each other (CR-01).
             let outBasename = file.basename + '.dialogue';
             const parentDirName = normalizePath(file.path).split('/').slice(0, -1).pop();
-            if (parentDirName && app.vault.getAbstractFileByPath(outBasename)) {
+            const outDir = normalizePath(exportPath || '');
+            const targetPath = outDir
+                ? outDir + '/' + outBasename
+                : file.path.replace(/\.ncanvas$/, '.dialogue');
+            const targetExists = (outDir && isAbsoluteExportPath(outDir))
+                ? fs.existsSync(path.join(outDir, outBasename))
+                : !!app.vault.getAbstractFileByPath(targetPath);
+            if (parentDirName && targetExists) {
                 outBasename = parentDirName + '-' + outBasename;
             }
 

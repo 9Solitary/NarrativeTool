@@ -19,12 +19,14 @@ class StringSuggesterModal extends SuggestModal {
     /**
      * @param {import('obsidian').App} app
      * @param {string[]} items - list of strings to choose from
-     * @param {Function} onChoose - callback receiving the chosen string
+     * @param {Function} onChoose - callback receiving the chosen string,
+     *   or null when the modal is dismissed without a choice (WR-02)
      */
     constructor(app, items, onChoose) {
         super(app);
         this._items = items;
         this._onChoose = onChoose;
+        this._chosen = false;
     }
 
     getSuggestions(query) {
@@ -38,7 +40,12 @@ class StringSuggesterModal extends SuggestModal {
     }
 
     onChooseSuggestion(item, evt) {
+        this._chosen = true;
         this._onChoose(item);
+    }
+
+    onClose() {
+        if (!this._chosen) this._onChoose(null);
     }
 }
 
@@ -51,12 +58,14 @@ class FileSuggesterModal extends SuggestModal {
     /**
      * @param {import('obsidian').App} app
      * @param {import('obsidian').TFile[]} files - list of files to choose from
-     * @param {Function} onChoose - callback receiving the chosen TFile
+     * @param {Function} onChoose - callback receiving the chosen TFile,
+     *   or null when the modal is dismissed without a choice (WR-02)
      */
     constructor(app, files, onChoose) {
         super(app);
         this._files = files;
         this._onChoose = onChoose;
+        this._chosen = false;
     }
 
     getSuggestions(query) {
@@ -70,7 +79,12 @@ class FileSuggesterModal extends SuggestModal {
     }
 
     onChooseSuggestion(file, evt) {
+        this._chosen = true;
         this._onChoose(file);
+    }
+
+    onClose() {
+        if (!this._chosen) this._onChoose(null);
     }
 }
 
@@ -89,6 +103,7 @@ class FolderSuggestModal extends SuggestModal {
         super(app);
         this._folders = folders;
         this._onChoose = onChoose;
+        this._chosen = false;
     }
 
     getSuggestions(query) {
@@ -102,7 +117,12 @@ class FolderSuggestModal extends SuggestModal {
     }
 
     onChooseSuggestion(folder, evt) {
+        this._chosen = true;
         this._onChoose(folder);
+    }
+
+    onClose() {
+        if (!this._chosen) this._onChoose(null);
     }
 }
 
