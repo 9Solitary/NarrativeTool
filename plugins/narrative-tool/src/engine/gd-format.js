@@ -6,7 +6,7 @@
 //
 // As specified in 02-01-PLAN.md and RESEARCH.md Pattern 2 (Format Function Dispatch).
 
-const { TOKENS } = require('../../../shared/gd-constants');
+const { TOKENS } = require('./gd-constants');
 
 // -------------------------------------------------------------------------
 // Utility helpers

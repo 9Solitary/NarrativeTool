@@ -5,7 +5,7 @@ const { readFileSync, readdirSync, existsSync } = require('node:fs');
 const { join, basename } = require('node:path');
 
 // Import the real export engine
-const { exportEngine } = require('../plugins/dialogue-export/src/export-engine');
+const { exportEngine } = require('../plugins/narrative-tool/src/engine/export-engine');
 
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 const GOLDEN_DIR = join(__dirname, 'golden');
@@ -54,7 +54,7 @@ describe('Export Engine - Topological Sort', () => {
       { id: 'l0', from: 'n0', to: 'n1' },
       { id: 'l1', from: 'n1', to: 'n2' }
     ];
-    const { topologicalSort } = require('../plugins/dialogue-export/src/export-engine');
+    const { topologicalSort } = require('../plugins/narrative-tool/src/engine/export-engine');
     const order = topologicalSort(nodes, links, 'n0');
     const ids = order.map(n => n.id);
     assert.deepStrictEqual(ids, ['n0', 'n1', 'n2']);
@@ -66,7 +66,7 @@ describe('Export Engine - Topological Sort', () => {
       { id: 'n1', type: 'Dialog', title: 'Orphan' }
     ];
     const links = [];
-    const { topologicalSort } = require('../plugins/dialogue-export/src/export-engine');
+    const { topologicalSort } = require('../plugins/narrative-tool/src/engine/export-engine');
     const order = topologicalSort(nodes, links, 'n0');
     const ids = order.map(n => n.id);
     assert.deepStrictEqual(ids, ['n0']);
@@ -78,7 +78,7 @@ describe('Export Engine - Topological Sort', () => {
       { id: 'n2', type: 'Dialog', title: 'Second' }
     ];
     const links = [{ id: 'l0', from: 'n1', to: 'n2' }];
-    const { topologicalSort } = require('../plugins/dialogue-export/src/export-engine');
+    const { topologicalSort } = require('../plugins/narrative-tool/src/engine/export-engine');
     const order = topologicalSort(nodes, links, 'n1');
     assert.strictEqual(order.length, 2);
   });
@@ -87,20 +87,20 @@ describe('Export Engine - Topological Sort', () => {
 // Unit tests for character resolution
 describe('Export Engine - Character Resolution', () => {
   it('resolves character from cast[0] with role Speaker', () => {
-    const { resolveCharacter } = require('../plugins/dialogue-export/src/export-engine');
+    const { resolveCharacter } = require('../plugins/narrative-tool/src/engine/export-engine');
     const node = { cast: [{ characterId: 'c0', role: 'Speaker', name: 'Mara' }] };
     const chars = [{ id: 'c0', name: 'Mara' }];
     assert.strictEqual(resolveCharacter(node, chars), 'Mara');
   });
 
   it('falls back to node.title when no cast', () => {
-    const { resolveCharacter } = require('../plugins/dialogue-export/src/export-engine');
+    const { resolveCharacter } = require('../plugins/narrative-tool/src/engine/export-engine');
     const node = { title: 'Nathan', body: 'Hello.' };
     assert.strictEqual(resolveCharacter(node, []), 'Nathan');
   });
 
   it('returns null for narrator/Content nodes', () => {
-    const { resolveCharacter } = require('../plugins/dialogue-export/src/export-engine');
+    const { resolveCharacter } = require('../plugins/narrative-tool/src/engine/export-engine');
     const node = { title: '', body: 'Narrator text.' };
     assert.strictEqual(resolveCharacter(node, []), null);
   });

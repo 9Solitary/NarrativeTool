@@ -3,12 +3,12 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
-const MED_TOKENS = require('../shared/med-constants').MED_TOKENS;
+const MED_TOKENS = require('../plugins/narrative-tool/src/engine/med-constants').MED_TOKENS;
 
 // Import the format functions directly for unit testing
-const medFormat = require('../plugins/dialogue-export/src/med-format');
+const medFormat = require('../plugins/narrative-tool/src/engine/med-format');
 const { detectMedState, formatMedHeader, formatMedNode } = medFormat;
-const { exportEngine } = require('../plugins/dialogue-export/src/export-engine');
+const { exportEngine } = require('../plugins/narrative-tool/src/engine/export-engine');
 
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 const GOLDEN_DIR = join(__dirname, 'golden');

@@ -3,7 +3,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const { readFileSync, readdirSync, existsSync } = require('node:fs');
 const { join, basename } = require('node:path');
-const { exportEngine } = require('../plugins/dialogue-export/src/export-engine');
+const { exportEngine } = require('../plugins/narrative-tool/src/engine/export-engine');
 
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 const GOLDEN_DIR = join(__dirname, 'golden');

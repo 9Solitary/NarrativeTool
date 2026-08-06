@@ -13,7 +13,7 @@
 //
 // 04-03: Auto-Export + Reference Validation
 
-const { exportEngine } = require('../../dialogue-export/src/export-engine');
+const { exportEngine } = require('../../narrative-tool/src/engine/export-engine');
 
 // ---------------------------------------------------------------------------
 // Path normalization helpers
