@@ -69,7 +69,9 @@ async function ensureDirectory(app, dirPath) {
  * @returns {Promise<{mode: 'absolute'|'vault', path: string}>}
  */
 async function writeDialogueFile(app, exportPath, outFilename, sourceFile, content) {
-    const dir = (exportPath || '').trim();
+    // Trim, then strip trailing separators so 'Exports/' and 'D:\dir\' cannot
+    // produce double-separator paths in the vault-relative branch.
+    const dir = (exportPath || '').trim().replace(/[\\/]+$/, '');
 
     // Empty export path -> output alongside the source file (vault mode)
     if (!dir) {
