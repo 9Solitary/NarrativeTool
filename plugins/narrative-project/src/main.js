@@ -7,11 +7,11 @@
 
 const { Plugin } = require('obsidian');
 // 05-03: modules moved into the merged narrative-tool plugin — re-pointed (Rule 3 fix)
-const { DEFAULT_SETTINGS, NarrativeToolSettingTab } = require('../narrative-tool/src/ui/settings');
-const { StatusBarManager } = require('../narrative-tool/src/ui/status-bar');
-const { exportAllDialogues } = require('../narrative-tool/src/commands/batch-export');
-const { setupAutoExport, teardownAutoExport } = require('../narrative-tool/src/commands/auto-export');
-const { validateReferences } = require('../narrative-tool/src/commands/reference-validator');
+const { DEFAULT_SETTINGS, NarrativeToolSettingTab } = require('../../narrative-tool/src/ui/settings');
+const { StatusBarManager } = require('../../narrative-tool/src/ui/status-bar');
+const { exportAllDialogues } = require('../../narrative-tool/src/commands/batch-export');
+const { setupAutoExport, teardownAutoExport } = require('../../narrative-tool/src/commands/auto-export');
+const { validateReferences } = require('../../narrative-tool/src/commands/reference-validator');
 
 module.exports = class NarrativeProjectPlugin extends Plugin {
     async onload() {
@@ -66,7 +66,7 @@ module.exports = class NarrativeProjectPlugin extends Plugin {
                     return;
                 }
                 this.statusBar.setState('exporting', { count: 1 });
-                const { exportSingleFile } = require('../narrative-tool/src/commands/auto-export');
+                const { exportSingleFile } = require('../../narrative-tool/src/commands/auto-export');
                 const result = await exportSingleFile(
                     this.app, activeFile, this.settings.exportPath, this.settings.medEnabled
                 );
