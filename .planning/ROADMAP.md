@@ -46,9 +46,9 @@
 **Plans**: 5 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Engine layer: git mv export engine + shared constants into engine/ (D-03), re-point engine tests, purity guard
-- [ ] 05-02-PLAN.md — Flow layer: git mv flow modules + schema into engine/schema, BUG-01 restore createQuestMd + golden + tests
-- [ ] 05-03-PLAN.md — Commands/UI layer: shared paths module fixes BUG-02/03, export-current dedup, modals/notify/nc-bridge, settings+status-bar renames
+- [x] 05-01-PLAN.md — Engine layer: git mv export engine + shared constants into engine/ (D-03), re-point engine tests, purity guard
+- [x] 05-02-PLAN.md — Flow layer: git mv flow modules + schema into engine/schema, BUG-01 restore createQuestMd + golden + tests
+- [x] 05-03-PLAN.md — Commands/UI layer: shared paths module fixes BUG-02/03, export-current dedup, modals/notify/nc-bridge, settings+status-bar renames
 - [ ] 05-04-PLAN.md — Plugin identity + merged main.js: 10 narrative-tool: commands, D-06 migration, BUG-04/05/06/07 wiring, merge-smoke + navigation tests
 - [ ] 05-05-PLAN.md — Delete legacy plugins, esbuild build, full suite + golden byte-identical verification
 **UI hint**: yes
@@ -106,7 +106,7 @@ Plans:
 | 2. Dialogue Export | v0.1 | 3/3 | Complete | 2026-07-24 |
 | 3. Entities + Flow Tools | v0.1 | 3/3 | Complete | 2026-07-24 |
 | 4. Narrative Project | v0.1 | 3/3 | Complete | 2026-07-24 |
-| 5. Plugin Merge + Bug Fixes | v1.0 | 0/5 | Not started | - |
+| 5. Plugin Merge + Bug Fixes | v1.0 | 3/5 | In Progress|  |
 | 6. Engine Features | v1.0 | 0/0 | Not started | - |
 | 7. Build + Deployment | v1.0 | 0/0 | Not started | - |
 | 8. UX | v1.0 | 0/0 | Not started | - |
