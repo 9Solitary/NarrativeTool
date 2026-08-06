@@ -11,6 +11,12 @@ const assert = require('node:assert');
 const path = require('node:path');
 const Module = require('node:module');
 
+// main.js does require('./styles.css') (BUG-06 runtime injection) — make the
+// text import loadable outside esbuild (mirrors tests/merge-smoke.test.js)
+Module._extensions['.css'] = function (mod, filename) {
+    mod._compile('module.exports = /* css */ "";', filename);
+};
+
 // ---------------------------------------------------------------------------
 // Intercept the 'obsidian' require to provide lightweight mocks.
 //
@@ -152,25 +158,25 @@ describe('settings module exports', () => {
 // Test 5: Plugin class structure (loaded from main.js)
 // ---------------------------------------------------------------------------
 
-describe('NarrativeProjectPlugin', () => {
+describe('NarrativeToolPlugin', () => {
   it('is a class/constructor function exported from main.js', () => {
-    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
-    assert.strictEqual(typeof NarrativeProjectPlugin, 'function');
+    const NarrativeToolPlugin = require('../plugins/narrative-tool/src/main');
+    assert.strictEqual(typeof NarrativeToolPlugin, 'function');
   });
 
   it('has onload, onunload, and saveSettings methods on prototype', () => {
-    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
-    const proto = NarrativeProjectPlugin.prototype;
+    const NarrativeToolPlugin = require('../plugins/narrative-tool/src/main');
+    const proto = NarrativeToolPlugin.prototype;
     assert.strictEqual(typeof proto.onload, 'function', 'should have onload');
     assert.strictEqual(typeof proto.onunload, 'function', 'should have onunload');
     assert.strictEqual(typeof proto.saveSettings, 'function', 'should have saveSettings');
   });
 
   it('does NOT have configure-project command (removed per plan)', () => {
-    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
+    const NarrativeToolPlugin = require('../plugins/narrative-tool/src/main');
     // The old addCommand('configure-project', ...) should not exist.
     // Verify the prototype doesn't contain a reference to 'configure-project'
-    const src = NarrativeProjectPlugin.toString();
+    const src = NarrativeToolPlugin.toString();
     assert.ok(!src.includes('configure-project'),
       'configure-project command should be removed (settings tab replaces it)');
   });
@@ -199,10 +205,10 @@ describe('Plugin settings initialization', () => {
 
   it('exposes settings as plain object on plugin instance for cross-plugin read', () => {
     const { DEFAULT_SETTINGS } = require('../plugins/narrative-tool/src/ui/settings');
-    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
+    const NarrativeToolPlugin = require('../plugins/narrative-tool/src/main');
 
     // Simulate what onload does: construct, assign settings
-    const plugin = Object.create(NarrativeProjectPlugin.prototype);
+    const plugin = Object.create(NarrativeToolPlugin.prototype);
     plugin.settings = Object.assign({}, DEFAULT_SETTINGS, {});
 
     // Verify settings is a plain object accessible for cross-plugin reads
@@ -220,8 +226,8 @@ describe('Plugin settings initialization', () => {
       'narrative-project': null
     };
 
-    const NarrativeProjectPlugin = require('../plugins/narrative-project/src/main');
-    const plugin = Object.create(NarrativeProjectPlugin.prototype);
+    const NarrativeToolPlugin = require('../plugins/narrative-tool/src/main');
+    const plugin = Object.create(NarrativeToolPlugin.prototype);
     plugin.settings = Object.assign({}, DEFAULT_SETTINGS, { exportPath: 'GodotOutput' });
     simulatedPlugins['narrative-project'] = plugin;
 

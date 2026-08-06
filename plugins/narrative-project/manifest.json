@@ -1,9 +1,0 @@
-{
-    "id": "narrative-project",
-    "name": "Narrative Project",
-    "version": "0.1.0",
-    "minAppVersion": "1.5.0",
-    "description": "Project-wide configuration and coordination for the Narrative Toolchain",
-    "author": "Narrative Toolchain",
-    "isDesktopOnly": true
-}
