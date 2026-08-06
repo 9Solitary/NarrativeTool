@@ -619,9 +619,12 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             notify('No .ncanvas files found in vault');
             return '';
         }
+        // The suggester resolves null when dismissed (WR-02) — resolve ''
+        // here so a cancelled pick returns the documented empty string
+        // instead of leaving the awaiting command flow hanging forever.
         return new Promise((resolve) => {
             new FileSuggesterModal(this.app, ncanvasFiles, (file) => {
-                resolve(file.path);
+                resolve(file ? file.path : '');
             }).open();
         });
     }
@@ -636,9 +639,10 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             notify(`No ${entityType} .md files found in vault`);
             return '';
         }
+        // See _pickNcanvasFile — cancelled picks resolve '' (WR-02).
         return new Promise((resolve) => {
             new FileSuggesterModal(this.app, files, (file) => {
-                resolve(file.path);
+                resolve(file ? file.path : '');
             }).open();
         });
     }
