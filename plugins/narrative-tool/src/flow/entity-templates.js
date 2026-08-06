@@ -3,14 +3,14 @@
 // Generates .md content with YAML frontmatter for four entity types:
 // Character, Location, Quest, Item.
 //
-// Field definitions are sourced from shared/schema/. Each template function
+// Field definitions are sourced from engine/schema/. Each template function
 // takes a plain object with entity fields and returns a complete Markdown
 // string ready to write to a Vault file via app.vault.create().
 
-const { CharacterFields, CharacterRequired } = require('../../../shared/schema/character');
-const { LocationFields, LocationRequired } = require('../../../shared/schema/location');
-const { QuestFields, QuestRequired } = require('../../../shared/schema/quest');
-const { ItemFields, ItemRequired } = require('../../../shared/schema/item');
+const { CharacterFields, CharacterRequired } = require('../engine/schema/character');
+const { LocationFields, LocationRequired } = require('../engine/schema/location');
+const { QuestFields, QuestRequired } = require('../engine/schema/quest');
+const { ItemFields, ItemRequired } = require('../engine/schema/item');
 
 // -------------------------------------------------------------------------
 // YAML safety helpers
