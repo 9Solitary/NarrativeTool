@@ -1,6 +1,7 @@
 // navigation.js -- Cross-file navigation helper functions
 //
-// Provides: openDialogueFile, openFlowCanvas, openFileInSplit
+// Provides: openDialogueFile, openFlowCanvas, openFileInSplit,
+// findFlowCanvasForDialogue
 //
 // This module is function-based -- it receives `app` as a parameter rather than
 // holding a reference to the Obsidian Plugin instance. This design enables
@@ -74,8 +75,43 @@ async function openFileInSplit(app, filePath) {
     }
 }
 
+/**
+ * Find all Flow canvases (.canvas) that reference a given dialogue file
+ * (.ncanvas) as a file node. Used for BUG-05: Dialogue -> Flow reverse
+ * navigation ("Open flow canvas").
+ *
+ * Scans every .canvas file in the vault, parses its JSON, and collects the
+ * canvases whose nodes contain a file reference equal to ncanvasPath.
+ * Unparseable canvases are skipped silently (a broken canvas must not
+ * break reverse navigation).
+ *
+ * @param {import('obsidian').App} app - Obsidian App instance
+ * @param {string} ncanvasPath - vault-relative path to the .ncanvas file
+ * @returns {Promise<import('obsidian').TFile[]>} canvases referencing it
+ */
+async function findFlowCanvasForDialogue(app, ncanvasPath) {
+    const results = [];
+    const allFiles = app.vault.getFiles();
+
+    for (const file of allFiles) {
+        if (file.extension !== 'canvas') continue;
+        try {
+            const content = await app.vault.read(file);
+            const json = JSON.parse(content);
+            if ((json.nodes || []).some(n => n.type === 'file' && n.file === ncanvasPath)) {
+                results.push(file);
+            }
+        } catch (err) {
+            // Unparseable canvas — skip silently
+        }
+    }
+
+    return results;
+}
+
 module.exports = {
     openDialogueFile,
     openFlowCanvas,
     openFileInSplit,
+    findFlowCanvasForDialogue,
 };

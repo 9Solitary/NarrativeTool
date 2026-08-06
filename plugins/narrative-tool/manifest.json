@@ -1,0 +1,9 @@
+{
+    "id": "narrative-tool",
+    "name": "Narrative Tool",
+    "version": "1.0.0",
+    "minAppVersion": "1.5.0",
+    "description": "Narrative toolchain: Flow → Dialogue editing and Godot Dialogue Manager export",
+    "author": "Narrative Toolchain",
+    "isDesktopOnly": true
+}
