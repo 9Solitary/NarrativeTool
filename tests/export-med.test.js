@@ -1,8 +1,8 @@
 // export-med.test.js — MED state extension export tests (MED-01 through MED-08)
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { readFileSync } = require('node:fs');
-const { join } = require('node:path');
+const { readFileSync, readdirSync, existsSync } = require('node:fs');
+const { join, basename } = require('node:path');
 const MED_TOKENS = require('../plugins/narrative-tool/src/engine/med-constants').MED_TOKENS;
 
 // Import the format functions directly for unit testing
@@ -517,5 +517,68 @@ describe('MED Export - Integration', () => {
     assert.ok(output.includes('HP: 10'), 'Should resolve hp');
     assert.ok(output.includes('Coins: 3'), 'Should resolve res_coins as literal');
     assert.ok(!output.includes('{{res('), 'Should not use MED display syntax');
+  });
+});
+
+// =========================================================================
+// MED Golden fixtures (medEnabled: true)
+// =========================================================================
+
+describe('MED Export - Golden Fixtures', () => {
+  const medFixtures = readdirSync(FIXTURES_DIR)
+    .filter(f => f.endsWith('.ncanvas') && f.startsWith('med-'));
+
+  for (const fixture of medFixtures) {
+    const name = basename(fixture, '.ncanvas');
+    it(`exports ${name}.ncanvas to match golden .dialogue`, () => {
+      const fixturePath = join(FIXTURES_DIR, fixture);
+      const goldenPath = join(GOLDEN_DIR, `${name}.dialogue`);
+
+      assert.ok(existsSync(goldenPath), `Missing golden file: ${goldenPath}`);
+
+      const ncanvas = JSON.parse(readFileSync(fixturePath, 'utf-8'));
+      const output = exportEngine(ncanvas, { medEnabled: true });
+      const expected = readFileSync(goldenPath, 'utf-8');
+
+      assert.strictEqual(output, expected,
+        `Export for '${fixture}' does not match golden file.\n--- OUTPUT ---\n${output}\n--- EXPECTED ---\n${expected}`);
+    });
+  }
+});
+
+// =========================================================================
+// WR-01: Nested Choice in MED mode — no duplicated mutations, no stray
+// [if]/[else]/[/if] block lines on the nested choice node itself
+// =========================================================================
+
+describe('MED Export - Nested Choice (WR-01)', () => {
+  const nestedFixture = () => JSON.parse(readFileSync(join(FIXTURES_DIR, 'med-nested-choice.ncanvas'), 'utf-8'));
+
+  it('emits each option mutation exactly once (no merged re-emission)', () => {
+    const output = exportEngine(nestedFixture(), { medEnabled: true });
+
+    // Nested choice option mutation — must appear once, inline under its option
+    const setFlagCount = (output.match(/do set_flag paid true/g) || []).length;
+    assert.strictEqual(setFlagCount, 1, 'nested option mutation must be emitted exactly once');
+
+    // Outer choice option mutation — must appear once, inline under its option
+    const addResCount = (output.match(/do add_res coins -5/g) || []).length;
+    assert.strictEqual(addResCount, 1, 'outer option mutation must be emitted exactly once');
+  });
+
+  it('emits no stray conditional block lines after the nested choice content', () => {
+    const output = exportEngine(nestedFixture(), { medEnabled: true });
+
+    // Inline suffix lines are expected; BLOCK lines are not.
+    assert.ok(output.includes('- Pay the toll [if res_coins >= 5 /]'),
+      'outer option keeps its inline [if cond /] suffix');
+    assert.ok(output.includes('- Yes [if flag_honest == true /]'),
+      'nested option keeps its inline [if cond /] suffix');
+    assert.ok(!output.includes('[if flag_honest == true]'),
+      'must not emit a block-opening [if ...] line for the nested choice');
+    assert.ok(!output.includes('[else]'),
+      'must not emit a stray [else] block line');
+    assert.ok(!output.includes('[/if]'),
+      'must not emit a stray [/if] block line');
   });
 });

@@ -249,8 +249,13 @@ function exportEngine(ncanvasJson, config) {
         formatNode: function(node, childCtx) {
             // Always emit base DM lines first
             const baseLines = formatNode(node, childCtx);
-            // Then append MED-specific lines if enabled
-            if (childCtx.medEnabled) {
+            // Then append MED-specific lines if enabled. Choice nodes handle
+            // their own per-option mutations and inline [if cond /] suffixes
+            // inside formatChoiceNode — calling formatMedNode here would
+            // re-emit merged mutations and stray [if]/[else]/[/if] block
+            // lines for nested choices (WR-01). Mirrors the top-level
+            // walkNode Choice branch, which never calls formatMedNode.
+            if (childCtx.medEnabled && node.type !== 'Choice') {
                 const medLines = formatMedNode(node, childCtx);
                 return baseLines.concat(medLines || []);
             }

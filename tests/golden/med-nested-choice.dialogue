@@ -1,0 +1,14 @@
+using S
+
+~ start
+Merchant: What do you want to buy?
+- Pay the toll [if res_coins >= 5 /]
+	Merchant: Hand over 5 coins?
+	- Yes [if flag_honest == true /]
+		The merchant smiles and hands you the key.
+		do set_flag paid true
+	- No
+		The merchant frowns and turns away.
+	do add_res coins -5
+- Walk away
+	You walk away empty-handed.
