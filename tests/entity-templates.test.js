@@ -31,7 +31,7 @@ function readGolden(filename) {
 
 describe('Character template (ENT-01)', () => {
     it('should match golden file expected-character.md', () => {
-        const { createCharacterMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createCharacterMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const expected = readGolden('expected-character.md');
 
         const actual = createCharacterMd({
@@ -53,7 +53,7 @@ describe('Character template (ENT-01)', () => {
 
 describe('Location template (ENT-02)', () => {
     it('should match golden file expected-location.md', () => {
-        const { createLocationMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createLocationMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const expected = readGolden('expected-location.md');
 
         const actual = createLocationMd({
@@ -75,7 +75,7 @@ describe('Location template (ENT-02)', () => {
 
 describe('Quest template (ENT-03)', () => {
     it('should match golden file expected-quest.md', () => {
-        const { createQuestMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createQuestMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const expected = readGolden('expected-quest.md');
 
         const actual = createQuestMd({
@@ -100,7 +100,7 @@ describe('Quest template (ENT-03)', () => {
 
 describe('Item template (ENT-04)', () => {
     it('should match golden file expected-item.md', () => {
-        const { createItemMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createItemMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const expected = readGolden('expected-item.md');
 
         const actual = createItemMd({
@@ -123,7 +123,7 @@ describe('Item template (ENT-04)', () => {
 
 describe('Graph View tags (ENT-05)', () => {
     it('character template should contain tags: [character]', () => {
-        const { createCharacterMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createCharacterMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const output = createCharacterMd({
             id: 'bob', name: 'Bob', role: 'Guard', voice: 'Gruff',
             notes: '', appearanceScenes: []
@@ -132,7 +132,7 @@ describe('Graph View tags (ENT-05)', () => {
     });
 
     it('location template should contain tags: [location]', () => {
-        const { createLocationMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createLocationMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const output = createLocationMd({
             id: 'village', name: 'Village', description: '', region: '',
             connectedLocations: [], notes: ''
@@ -141,7 +141,7 @@ describe('Graph View tags (ENT-05)', () => {
     });
 
     it('quest template should contain tags: [quest]', () => {
-        const { createQuestMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createQuestMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const output = createQuestMd({
             id: 'main-01', name: 'Main Quest 01', description: '', questType: 'main',
             prerequisites: [], stages: [], giverCharacterId: '', involvedLocationIds: [], notes: ''
@@ -150,7 +150,7 @@ describe('Graph View tags (ENT-05)', () => {
     });
 
     it('item template should contain tags: [item]', () => {
-        const { createItemMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createItemMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
         const output = createItemMd({
             id: 'key01', name: 'Rusty Key', description: '', itemType: 'key',
             relatedQuestId: '', ownerCharacterId: '', notes: ''
@@ -166,7 +166,7 @@ describe('Graph View tags (ENT-05)', () => {
 describe('Frontmatter required fields', () => {
     it('all templates should include id and name in YAML frontmatter', () => {
         const { createCharacterMd, createLocationMd, createQuestMd, createItemMd } =
-            require('../plugins/flow-tools/src/entity-templates');
+            require('../plugins/narrative-tool/src/flow/entity-templates');
 
         const charOutput = createCharacterMd({
             id: 'bob', name: 'Bob', role: 'Guard', voice: 'Gruff',
@@ -221,7 +221,7 @@ describe('Frontmatter required fields', () => {
 describe('YAML injection safety', () => {
     it('should escape double quotes in name values', () => {
         const { createCharacterMd, createLocationMd, createQuestMd, createItemMd } =
-            require('../plugins/flow-tools/src/entity-templates');
+            require('../plugins/narrative-tool/src/flow/entity-templates');
 
         const nameWithQuotes = 'He said: "Hello"';
 
@@ -259,7 +259,7 @@ describe('YAML injection safety', () => {
     });
 
     it('should handle colons in string values without breaking YAML', () => {
-        const { createCharacterMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createCharacterMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
 
         const nameWithColon = 'Chapter: The Beginning';
         const md = createCharacterMd({
@@ -279,7 +279,7 @@ describe('YAML injection safety', () => {
 
 describe('Empty optional fields', () => {
     it('should not produce invalid YAML for empty arrays', () => {
-        const { createLocationMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createLocationMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
 
         const md = createLocationMd({
             id: 'v', name: 'V', description: '', region: '',
@@ -292,7 +292,7 @@ describe('Empty optional fields', () => {
     });
 
     it('should produce valid YAML for empty strings', () => {
-        const { createItemMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createItemMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
 
         const md = createItemMd({
             id: 'i', name: 'I', description: '', itemType: 'misc',
@@ -307,7 +307,7 @@ describe('Empty optional fields', () => {
     });
 
     it('should not produce empty appearance_scenes value', () => {
-        const { createCharacterMd } = require('../plugins/flow-tools/src/entity-templates');
+        const { createCharacterMd } = require('../plugins/narrative-tool/src/flow/entity-templates');
 
         const md = createCharacterMd({
             id: 'bob', name: 'Bob', role: 'Guard', voice: 'Gruff',
