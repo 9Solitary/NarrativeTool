@@ -15,7 +15,7 @@ const assert = require('node:assert');
 // -------------------------------------------------------------------------
 
 describe('gd-constants.js — Godot Dialogue Manager Tokens', () => {
-    const { TOKENS } = require('../shared/gd-constants.js');
+    const { TOKENS } = require('../plugins/narrative-tool/src/engine/gd-constants.js');
 
     // --- Frozen -------------------------------------------------------
     it('TOKENS object is frozen (immutable)', () => {
@@ -104,7 +104,7 @@ describe('gd-constants.js — Godot Dialogue Manager Tokens', () => {
 // -------------------------------------------------------------------------
 
 describe('med-constants.js — MED Extension Tokens', () => {
-    const { MED_TOKENS } = require('../shared/med-constants.js');
+    const { MED_TOKENS } = require('../plugins/narrative-tool/src/engine/med-constants.js');
 
     // --- Frozen -------------------------------------------------------
     it('MED_TOKENS object is frozen (immutable)', () => {
@@ -180,8 +180,8 @@ describe('med-constants.js — MED Extension Tokens', () => {
 
 describe('GD and MED token separation', () => {
     it('gd-constants.js and med-constants.js are separate files with distinct exports', () => {
-        const gd = require('../shared/gd-constants.js');
-        const med = require('../shared/med-constants.js');
+        const gd = require('../plugins/narrative-tool/src/engine/gd-constants.js');
+        const med = require('../plugins/narrative-tool/src/engine/med-constants.js');
 
         // Both export different objects
         assert.ok('TOKENS' in gd, 'gd-constants should export TOKENS');
