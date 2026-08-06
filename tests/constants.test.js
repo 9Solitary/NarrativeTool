@@ -4,8 +4,9 @@
 // are present, non-empty, frozen, and correctly separated across the two
 // shared constant files.
 //
-// FND-02: shared/gd-constants.js contains all DM and MED syntax tokens.
+// FND-02: gd-constants.js contains all DM and MED syntax tokens.
 // Coverage: gd-constants.js (TOKENS), med-constants.js (MED_TOKENS)
+// (Relocated per D-03: constants merged into plugins/narrative-tool/src/engine/)
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
