@@ -153,7 +153,7 @@ describe('NarrativeToolPlugin - _createEntityFromCommand (WR-03)', () => {
 
         await plugin._createEntityFromCommand(CHARACTER_CMD);
 
-        const normalized = (Notice._all || []).find(m => m.includes('ID normalized to "bob-smith"'));
+        const normalized = (Notice._all || []).find(m => m.includes('ID 已规范化为 "bob-smith"'));
         assert.ok(normalized, `expected a normalization notice, got: ${JSON.stringify(Notice._all)}`);
     });
 

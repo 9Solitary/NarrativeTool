@@ -48,7 +48,7 @@ async function exportSingleFile(app, file, exportPath, medEnabled) {
         } catch (parseErr) {
             return {
                 success: false,
-                error: 'Failed to parse .ncanvas JSON'
+                error: '无法解析 .ncanvas 文件（JSON 格式错误）'
             };
         }
 

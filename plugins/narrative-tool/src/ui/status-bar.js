@@ -34,15 +34,15 @@ class StatusBarManager {
         switch (state) {
             case 'pending':
                 this.element.addClass('nt-status-pending');
-                this.element.innerHTML = 'Narrative Toolchain';
+                this.element.innerHTML = '叙事工具链';
                 break;
 
             case 'exporting':
                 this.element.addClass('nt-status-exporting');
                 if (data && typeof data.count === 'number' && typeof data.total === 'number') {
-                    this.element.innerHTML = `Exporting ${data.count}/${data.total}...`;
+                    this.element.innerHTML = `导出中 ${data.count}/${data.total}...`;
                 } else {
-                    this.element.innerHTML = 'Exporting...';
+                    this.element.innerHTML = '导出中...';
                 }
                 break;
 
@@ -51,12 +51,12 @@ class StatusBarManager {
                 if (data && typeof data.exported === 'number') {
                     const failed = (typeof data.failed === 'number') ? data.failed : 0;
                     if (failed > 0) {
-                        this.element.innerHTML = `✓ ${data.exported} exported, ${failed} failed`;
+                        this.element.innerHTML = `✓ 已导出 ${data.exported} 个，${failed} 个失败`;
                     } else {
-                        this.element.innerHTML = `✓ ${data.exported} exported`;
+                        this.element.innerHTML = `✓ 已导出 ${data.exported} 个`;
                     }
                 } else {
-                    this.element.innerHTML = '✓ Export complete';
+                    this.element.innerHTML = '✓ 导出完成';
                 }
                 break;
 
@@ -65,14 +65,14 @@ class StatusBarManager {
                 if (data && data.message) {
                     this.element.innerHTML = `✗ ${data.message}`;
                 } else {
-                    this.element.innerHTML = '✗ Export failed';
+                    this.element.innerHTML = '✗ 导出失败';
                 }
                 break;
 
             default:
                 // Unknown state — fall back to pending
                 this.element.addClass('nt-status-pending');
-                this.element.innerHTML = 'Narrative Toolchain';
+                this.element.innerHTML = '叙事工具链';
                 break;
         }
     }

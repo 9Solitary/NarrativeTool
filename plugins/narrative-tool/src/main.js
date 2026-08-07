@@ -109,7 +109,10 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                     this.statusBar.setState('pending');
                 }, 5000);
             } else if (failCount > 0) {
-                this.statusBar.setState('failure', { message: `${failCount} auto-export failed` });
+                // UX-03: surface the first concrete error message
+                const firstError = results.find(r => !r.success);
+                const detail = firstError && firstError.error ? `：${firstError.error}` : '';
+                this.statusBar.setState('failure', { message: `${failCount} 个文件自动导出失败${detail}` });
             }
         });
 
@@ -149,21 +152,21 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         // 1. Export current dialogue (deduped single-file export, Plan 05-03)
         this.addCommand({
             id: 'narrative-tool:export-current-dialogue',
-            name: 'Export current dialogue',
+            name: '导出当前对话',
             callback: () => exportCurrentDialogue(this)
         });
 
         // 2. Batch export all dialogues
         this.addCommand({
             id: 'narrative-tool:batch-export-all-dialogues',
-            name: 'Batch Export All Dialogues',
+            name: '批量导出所有对话',
             callback: () => this.batchExportAllDialogues()
         });
 
         // 3. Validate Flow→Dialogue references
         this.addCommand({
             id: 'narrative-tool:validate-references',
-            name: 'Validate Flow→Dialogue references',
+            name: '验证 Flow→对话引用',
             callback: () => this.runReferenceValidation()
         });
 
@@ -172,32 +175,32 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         const entities = [
             {
                 id: 'narrative-tool:create-character',
-                name: 'Create Character',
-                modalTitle: 'Create Character',
+                name: '创建角色',
+                modalTitle: '创建角色',
                 templateFn: createCharacterMd,
                 defaultFolder: 'Characters',
                 entityType: 'character',
             },
             {
                 id: 'narrative-tool:create-location',
-                name: 'Create Location',
-                modalTitle: 'Create Location',
+                name: '创建地点',
+                modalTitle: '创建地点',
                 templateFn: createLocationMd,
                 defaultFolder: 'Locations',
                 entityType: 'location',
             },
             {
                 id: 'narrative-tool:create-item',
-                name: 'Create Item',
-                modalTitle: 'Create Item',
+                name: '创建物品',
+                modalTitle: '创建物品',
                 templateFn: createItemMd,
                 defaultFolder: 'Items',
                 entityType: 'item',
             },
             {
                 id: 'narrative-tool:create-quest',
-                name: 'Create Quest',
-                modalTitle: 'Create Quest',
+                name: '创建任务',
+                modalTitle: '创建任务',
                 templateFn: createQuestMd,
                 defaultFolder: 'Quests',
                 entityType: 'quest',
@@ -215,21 +218,21 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         // 8. Create Flow (name only → canvas + fragment folder)
         this.addCommand({
             id: 'narrative-tool:create-flow-canvas',
-            name: 'Create Flow',
+            name: '创建 Flow',
             callback: () => this._createFlowCanvasFromCommand(),
         });
 
         // 9. Create Flow Fragment (parent flow picker → linked into parent)
         this.addCommand({
             id: 'narrative-tool:create-flow-fragment',
-            name: 'Create Flow Fragment',
+            name: '创建 Flow 片段',
             callback: () => this._createFlowFragmentFromCommand(),
         });
 
         // 10. Open Flow Canvas for the active dialogue (BUG-05 — reverse navigation)
         this.addCommand({
             id: 'narrative-tool:open-flow-canvas',
-            name: 'Open Flow Canvas',
+            name: '打开 Flow 画布',
             callback: () => this._openFlowCanvasFromCommand(),
         });
     }
@@ -250,23 +253,32 @@ module.exports = class NarrativeToolPlugin extends Plugin {
 
         try {
             const result = await exportAllDialogues(
-                this.app, exportPath, exportScope, medEnabled
+                this.app, exportPath, exportScope, medEnabled,
+                // UX-03: per-file progress on the status bar
+                (count, total) => this.statusBar.setState('exporting', { count, total })
             );
 
-            // Update status bar with result
-            this.statusBar.setState('success', result);
+            if (result.failed > 0) {
+                // UX-03: surface the first concrete error
+                const first = result.errors && result.errors[0];
+                const detail = first ? `${first.file}：${first.message}` : '';
+                this.statusBar.setState('failure', {
+                    message: `${result.failed} 个失败${detail ? ' — ' + detail : ''}`
+                });
+                notify(`批量导出完成：${result.exported} 个成功，${result.failed} 个失败${detail ? '（' + detail + '）' : ''}`, 'error');
+            } else {
+                this.statusBar.setState('success', result);
+                notify(`批量导出完成：${result.exported} 个成功`);
+            }
 
             // Auto-revert to pending after 5 seconds
             setTimeout(() => this.statusBar.setState('pending'), 5000);
-
-            // Show ephemeral notification for summary
-            notify(`[NP] ${result.exported} exported, ${result.failed} failed`);
         } catch (err) {
             // Show failure state on status bar
             this.statusBar.setState('failure', { message: err.message });
 
             // Show ephemeral notification for error
-            notify(`[NP] Batch export failed: ${err.message}`);
+            notify(`批量导出失败：${err.message}`, 'error');
         }
     }
 
@@ -281,17 +293,17 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             const result = await validateReferences(this.app);
             if (result.brokenRefs === 0) {
                 this.statusBar.setState('success', { exported: result.totalRefs, failed: 0 });
-                notify(`[NP] All ${result.totalRefs} references valid`);
+                notify(`引用验证通过：${result.totalRefs} 个引用全部有效`);
                 // Auto-revert to pending after 5 seconds
                 setTimeout(() => this.statusBar.setState('pending'), 5000);
             } else {
-                this.statusBar.setState('failure', { message: `${result.brokenRefs} broken refs` });
-                notify(`[NP] ${result.brokenRefs} broken references found. See console for details.`);
-                console.warn('[NP] Broken Flow→Dialogue references:', result.details);
+                this.statusBar.setState('failure', { message: `${result.brokenRefs} 个引用失效` });
+                notify(`发现 ${result.brokenRefs} 个失效引用，详见控制台`, 'error');
+                console.warn('[Narrative Tool] Broken Flow→Dialogue references:', result.details);
             }
         } catch (err) {
-            this.statusBar.setState('failure', { message: 'Reference check failed' });
-            notify(`[NP] Reference validation failed: ${err.message}`);
+            this.statusBar.setState('failure', { message: '引用验证失败' });
+            notify(`引用验证失败：${err.message}`, 'error');
         }
     }
 
@@ -301,17 +313,17 @@ module.exports = class NarrativeToolPlugin extends Plugin {
 
     async _createEntityFromCommand(cmd) {
         // Step 1: Collect required fields via input prompts
-        notify(`${cmd.modalTitle} — enter ID (slug)`);
-        const id = await promptForInput(this.app, `${cmd.modalTitle}: ID`, 'e.g., bob, village, main-quest');
+        notify(`${cmd.modalTitle} — 请输入 ID（英文小写 slug）`);
+        const id = await promptForInput(this.app, `${cmd.modalTitle}：ID`, '例如 bob、village、main-quest');
         if (!id || !id.trim()) {
-            notify(`${cmd.modalTitle} cancelled (no ID provided)`);
+            notify(`已取消${cmd.modalTitle}（未输入 ID）`);
             return;
         }
 
-        notify(`${cmd.modalTitle} — enter Display Name`);
-        const name = await promptForInput(this.app, `${cmd.modalTitle}: Name`, 'Display name');
+        notify(`${cmd.modalTitle} — 请输入显示名称`);
+        const name = await promptForInput(this.app, `${cmd.modalTitle}：名称`, '显示名称');
         if (!name || !name.trim()) {
-            notify(`${cmd.modalTitle} cancelled (no name provided)`);
+            notify(`已取消${cmd.modalTitle}（未输入名称）`);
             return;
         }
 
@@ -323,7 +335,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         const slug = slugify(id.trim());
         const params = { id: slug, name: name.trim() };
         if (slug !== id.trim()) {
-            notify(`ID normalized to "${slug}" (filename-safe)`);
+            notify(`ID 已规范化为 "${slug}"（文件名安全）`);
         }
 
         // Add entity-specific defaults based on type
@@ -368,7 +380,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
 
         // Security: ensure the resolved path is still under the target folder
         if (!filePath.startsWith(folder + '/')) {
-            notify('Invalid filename: path traversal not allowed');
+            notify('文件名无效：不允许路径穿越', 'error');
             return;
         }
 
@@ -381,13 +393,13 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         // Step 5: Check for duplicate
         const existing = this.app.vault.getAbstractFileByPath(filePath);
         if (existing) {
-            notify('File already exists: ' + filePath);
+            notify('文件已存在：' + filePath, 'error');
             return;
         }
 
         // Step 6: Write file
         await this.app.vault.create(filePath, content);
-        notify('Created: ' + filePath);
+        notify('已创建：' + filePath);
 
         // Step 7: Optionally open the new file
         await this.app.workspace.openLinkText(filePath, '', true);
@@ -406,9 +418,9 @@ module.exports = class NarrativeToolPlugin extends Plugin {
 
     async _createFlowCanvasFromCommand() {
         // Step 1: The name is all we ask for
-        const name = await promptForInput(this.app, 'Create Flow', 'e.g., Chapter 1');
+        const name = await promptForInput(this.app, '创建 Flow', '例如 第一章');
         if (!name || !name.trim()) {
-            notify('Create Flow cancelled (no name)');
+            notify('已取消创建 Flow（未输入名称）');
             return;
         }
 
@@ -419,11 +431,11 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         const fragFolder = normalizePath(folder + '/' + safeName);
 
         if (!filePath.startsWith(folder + '/')) {
-            notify('Invalid filename: path traversal not allowed');
+            notify('文件名无效：不允许路径穿越', 'error');
             return;
         }
         if (this.app.vault.getAbstractFileByPath(filePath)) {
-            notify('File already exists: ' + filePath);
+            notify('文件已存在：' + filePath, 'error');
             return;
         }
 
@@ -443,7 +455,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         if (!this.app.vault.getAbstractFileByPath(fragFolder)) {
             await this.app.vault.createFolder(fragFolder);
         }
-        notify('Created: ' + filePath);
+        notify('已创建：' + filePath);
         await this.app.workspace.openLinkText(filePath, '', true);
     }
 
@@ -456,21 +468,21 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         const canvasFiles = this.app.vault.getFiles()
             .filter(f => f.extension === 'canvas');
         if (canvasFiles.length === 0) {
-            notify('No Flow canvas found — create one first');
+            notify('没有找到 Flow 画布 — 请先创建一个 Flow', 'error');
             return;
         }
         const parent = await new Promise((resolve) => {
             new FileSuggesterModal(this.app, canvasFiles, (f) => resolve(f)).open();
         });
         if (!parent) {
-            notify('Create Flow Fragment cancelled');
+            notify('已取消创建 Flow 片段');
             return;
         }
 
         // Step 2: The name is all we ask for
-        const name = await promptForInput(this.app, 'Create Flow Fragment', 'e.g., Village Encounter');
+        const name = await promptForInput(this.app, '创建 Flow 片段', '例如 村口遭遇战');
         if (!name || !name.trim()) {
-            notify('Create Flow Fragment cancelled (no name)');
+            notify('已取消创建 Flow 片段（未输入名称）');
             return;
         }
 
@@ -482,11 +494,11 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         const filePath = normalizePath(fragFolder + '/' + safeName + '.canvas');
 
         if (!filePath.startsWith(fragFolder + '/')) {
-            notify('Invalid filename: path traversal not allowed');
+            notify('文件名无效：不允许路径穿越', 'error');
             return;
         }
         if (this.app.vault.getAbstractFileByPath(filePath)) {
-            notify('File already exists: ' + filePath);
+            notify('文件已存在：' + filePath, 'error');
             return;
         }
 
@@ -514,10 +526,10 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             });
             await this.app.vault.modify(parent, JSON.stringify(updated, null, '\t'));
         } catch (e) {
-            notify('Fragment created, but failed to link into parent canvas: ' + e.message);
+            notify('片段已创建，但回写到父 Flow 画布失败：' + e.message, 'error');
         }
 
-        notify('Created: ' + filePath);
+        notify('已创建：' + filePath);
         await this.app.workspace.openLinkText(filePath, '', true);
     }
 
@@ -533,7 +545,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                     // Menu Item 1: Add dialogue node
                     menu.addItem((item) => {
                         item
-                            .setTitle('Add dialogue node')
+                            .setTitle('添加对话节点')
                             .setIcon('message-square')
                             .onClick(async () => {
                                 await this._createDialogueNodeOnCanvas(file);
@@ -543,12 +555,12 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                     // Menu Item 2: Add character node
                     menu.addItem((item) => {
                         item
-                            .setTitle('Add character node')
+                            .setTitle('添加角色节点')
                             .setIcon('user')
                             .onClick(async () => {
                                 const charFiles = this._getEntityFiles('character');
                                 if (charFiles.length === 0) {
-                                    notify('No Character .md files found in vault');
+                                    notify('库中没有角色 .md 文件（Characters/ 目录为空）');
                                     return;
                                 }
                                 await this._addFileNodeToCanvasFile(file, charFiles, 'character');
@@ -558,12 +570,12 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                     // Menu Item 3: Add location node
                     menu.addItem((item) => {
                         item
-                            .setTitle('Add location node')
+                            .setTitle('添加地点节点')
                             .setIcon('map-pin')
                             .onClick(async () => {
                                 const locFiles = this._getEntityFiles('location');
                                 if (locFiles.length === 0) {
-                                    notify('No Location .md files found in vault');
+                                    notify('库中没有地点 .md 文件（Locations/ 目录为空）');
                                     return;
                                 }
                                 await this._addFileNodeToCanvasFile(file, locFiles, 'location');
@@ -573,12 +585,12 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                     // Menu Item 4: Add item node
                     menu.addItem((item) => {
                         item
-                            .setTitle('Add item node')
+                            .setTitle('添加物品节点')
                             .setIcon('package')
                             .onClick(async () => {
                                 const itemFiles = this._getEntityFiles('item');
                                 if (itemFiles.length === 0) {
-                                    notify('No Item .md files found in vault');
+                                    notify('库中没有物品 .md 文件（Items/ 目录为空）');
                                     return;
                                 }
                                 await this._addFileNodeToCanvasFile(file, itemFiles, 'item');
@@ -588,12 +600,12 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                     // Menu Item 5: Add quest node (BUG-07 completes the 4 entity types)
                     menu.addItem((item) => {
                         item
-                            .setTitle('Add quest node')
+                            .setTitle('添加任务节点')
                             .setIcon('target')
                             .onClick(async () => {
                                 const questFiles = this._getEntityFiles('quest');
                                 if (questFiles.length === 0) {
-                                    notify('No Quest .md files found in vault');
+                                    notify('库中没有任务 .md 文件（Quests/ 目录为空）');
                                     return;
                                 }
                                 await this._addFileNodeToCanvasFile(file, questFiles, 'quest');
@@ -605,7 +617,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                     // Menu Item 6: Open linked dialogue (FLW-04)
                     menu.addItem((item) => {
                         item
-                            .setTitle('Open linked dialogue')
+                            .setTitle('打开关联对话')
                             .setIcon('external-link')
                             .onClick(async () => {
                                 await this._openLinkedDialogueFromCanvas(file);
@@ -618,7 +630,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                 if (file instanceof TFile && file.extension === 'ncanvas') {
                     menu.addItem((item) => {
                         item
-                            .setTitle('Open flow canvas')
+                            .setTitle('打开 Flow 画布')
                             .setIcon('external-link')
                             .onClick(async () => {
                                 await this._openFlowCanvasForFile(file);
@@ -638,7 +650,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         const ncanvasFiles = this.app.vault.getFiles()
             .filter(f => f.extension === 'ncanvas');
         if (ncanvasFiles.length === 0) {
-            notify('No .ncanvas files found in vault');
+            notify('库中没有 .ncanvas 文件');
             return;
         }
 
@@ -653,7 +665,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         try {
             canvas = JSON.parse(content);
         } catch (e) {
-            notify('Failed to parse .canvas JSON: ' + e.message);
+            notify('解析 .canvas JSON 失败：' + e.message, 'error');
             return;
         }
 
@@ -662,7 +674,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
 
         // Write back (tab-indented to match Obsidian Canvas format)
         await this.app.vault.modify(canvasFile, JSON.stringify(updated, null, '\t'));
-        notify('Added dialogue node: ' + chosen.path);
+        notify('已添加对话节点：' + chosen.path);
     }
 
     async _addFileNodeToCanvasFile(canvasFile, entityFiles, entityType) {
@@ -678,7 +690,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         try {
             canvas = JSON.parse(content);
         } catch (e) {
-            notify('Failed to parse .canvas JSON: ' + e.message);
+            notify('解析 .canvas JSON 失败：' + e.message, 'error');
             return;
         }
 
@@ -696,7 +708,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         const updated = addNodeToCanvas(canvas, fileNode);
 
         await this.app.vault.modify(canvasFile, JSON.stringify(updated, null, '\t'));
-        notify('Added ' + entityType + ' node: ' + chosen.path);
+        notify('已添加节点：' + chosen.path);
     }
 
     async _openLinkedDialogueFromCanvas(canvasFile) {
@@ -706,7 +718,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         try {
             canvas = JSON.parse(content);
         } catch (e) {
-            notify('Failed to parse .canvas JSON: ' + e.message);
+            notify('解析 .canvas JSON 失败：' + e.message, 'error');
             return;
         }
 
@@ -714,7 +726,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             .filter(n => n.type === 'file' && n.file && n.file.endsWith('.ncanvas'));
 
         if (dialogueNodes.length === 0) {
-            notify('No dialogue nodes found in this canvas');
+            notify('此画布中没有对话节点');
             return;
         }
 
@@ -730,7 +742,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             .filter(Boolean);
 
         if (dialogueFiles.length === 0) {
-            notify('Dialogue files referenced in canvas not found in vault');
+            notify('画布引用的对话文件在库中不存在', 'error');
             return;
         }
 
@@ -778,7 +790,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             }
         }
         if (!activeFile || activeFile.extension !== 'ncanvas') {
-            notify('Open a .ncanvas file first');
+            notify('请先打开一个 .ncanvas 文件');
             return;
         }
         await this._openFlowCanvasForFile(activeFile);
@@ -787,7 +799,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
     async _openFlowCanvasForFile(file) {
         const canvases = await findFlowCanvasForDialogue(this.app, file.path);
         if (canvases.length === 0) {
-            notify('No Flow canvas references this dialogue');
+            notify('没有 Flow 画布引用此对话');
         } else if (canvases.length === 1) {
             await openFlowCanvas(this.app, canvases[0].path);
         } else {

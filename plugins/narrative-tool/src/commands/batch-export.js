@@ -38,9 +38,10 @@ function normalizePath(p) {
  * @param {string} exportPath - Export destination: '' (alongside source), absolute (fs), or vault-relative
  * @param {string} exportScope - Vault path prefix to scope file discovery ("/" = all)
  * @param {boolean} medEnabled - Whether to include MED state extension syntax
- * @returns {Promise<{ exported: number, failed: number }>}
+ * @param {Function} [onProgress] - Optional (count, total) progress callback (UX-03)
+ * @returns {Promise<{ exported: number, failed: number, errors: Array<{file: string, message: string}> }>}
  */
-async function exportAllDialogues(app, exportPath, exportScope, medEnabled) {
+async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onProgress) {
     // Normalize inputs
     const scopePrefix = normalizePath(exportScope || '/');
 
@@ -72,8 +73,15 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled) {
 
     let exported = 0;
     let failed = 0;
+    const errors = [];
+    const total = inScopeFiles.length;
+    let processed = 0;
 
     for (const file of inScopeFiles) {
+        processed++;
+        if (typeof onProgress === 'function') {
+            onProgress(processed, total);
+        }
         try {
             // 1. Read file content
             const content = await app.vault.read(file);
@@ -83,7 +91,8 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled) {
             try {
                 ncanvasJson = JSON.parse(content);
             } catch (parseErr) {
-                console.warn(`[Narrative Project] JSON parse error in ${file.path}:`, parseErr.message);
+                console.warn(`[Narrative Tool] JSON parse error in ${file.path}:`, parseErr.message);
+                errors.push({ file: file.path, message: `JSON 解析失败：${parseErr.message}` });
                 failed++;
                 continue;
             }
@@ -116,13 +125,14 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled) {
 
             exported++;
         } catch (err) {
-            console.warn(`[Narrative Project] Export failed for ${file.path}:`, err.message);
+            console.warn(`[Narrative Tool] Export failed for ${file.path}:`, err.message);
+            errors.push({ file: file.path, message: err.message });
             failed++;
             // continue to next file
         }
     }
 
-    return { exported, failed };
+    return { exported, failed, errors };
 }
 
 // ---------------------------------------------------------------------------

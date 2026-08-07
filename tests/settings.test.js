@@ -142,11 +142,12 @@ describe('Settings merge behavior', () => {
 // ---------------------------------------------------------------------------
 
 describe('settings module exports', () => {
-  it('exports DEFAULT_SETTINGS and NarrativeToolSettingTab', () => {
+  it('exports DEFAULT_SETTINGS, NarrativeToolSettingTab and pickExportDirectory', () => {
     const mod = require('../plugins/narrative-tool/src/ui/settings');
     assert.ok('DEFAULT_SETTINGS' in mod);
     assert.ok('NarrativeToolSettingTab' in mod);
-    assert.strictEqual(Object.keys(mod).length, 2);
+    assert.ok('pickExportDirectory' in mod);
+    assert.strictEqual(Object.keys(mod).length, 3);
   });
 });
 

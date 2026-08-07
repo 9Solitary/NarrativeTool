@@ -30,7 +30,7 @@ async function exportCurrentDialogue(plugin) {
         const ncanvasFiles = plugin.app.vault.getFiles()
             .filter(f => f.extension === 'ncanvas');
         if (ncanvasFiles.length === 0) {
-            notify('No .ncanvas files found in vault.');
+            notify('库中没有 .ncanvas 文件');
             return;
         }
         new FileSuggesterModal(plugin.app, ncanvasFiles, (chosen) => {
@@ -57,7 +57,7 @@ async function doExport(plugin, file) {
         try {
             ncanvasJson = JSON.parse(rawContent);
         } catch (parseErr) {
-            notify('Failed to parse .ncanvas file: invalid JSON.', 'error');
+            notify('解析 .ncanvas 文件失败：JSON 格式错误', 'error');
             return;
         }
 
@@ -81,11 +81,11 @@ async function doExport(plugin, file) {
 
         // 5. Success: status bar + notice, revert to pending after 5s
         plugin.statusBar.setState('success', { exported: 1, failed: 0 });
-        notify(`Exported "${title}" → ${result.path}`);
+        notify(`已导出 "${title}" → ${result.path}`);
         setTimeout(() => plugin.statusBar.setState('pending'), 5000);
     } catch (err) {
         plugin.statusBar.setState('failure', { message: err.message });
-        notify(`Export failed: ${err.message}`, 'error');
+        notify(`导出失败：${err.message}`, 'error');
     }
 }
 

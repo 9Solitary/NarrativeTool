@@ -75,16 +75,18 @@ Dialogue Fragment (Narrative Canvas Node)
 
 | 命令名称 | 命令 ID | 功能 |
 |---------|---------|------|
-| Export current dialogue | `narrative-tool:export-current-dialogue` | 将当前打开的 `.ncanvas` 导出为 `.dialogue` |
-| Batch Export All Dialogues | `narrative-tool:batch-export-all-dialogues` | 扫描导出范围内所有 `.ncanvas` 并批量导出 |
-| Validate Flow→Dialogue references | `narrative-tool:validate-references` | 检查所有 `.canvas` 中的 `.ncanvas` 引用是否断链 |
-| Create Character | `narrative-tool:create-character` | 在 `Characters/` 下创建角色档案 |
-| Create Location | `narrative-tool:create-location` | 在 `Locations/` 下创建地点档案 |
-| Create Item | `narrative-tool:create-item` | 在 `Items/` 下创建道具档案 |
-| Create Quest | `narrative-tool:create-quest` | 在 `Quests/` 下创建任务档案 |
-| Create Flow | `narrative-tool:create-flow-canvas` | 输入名称，创建 `Flows/<名称>.canvas`（含标题节点）及同名 Fragment 文件夹 |
-| Create Flow Fragment | `narrative-tool:create-flow-fragment` | 选择父 Flow Canvas 后输入名称，在父 Flow 同名文件夹下创建片段，并自动在父 Canvas 中添加引用节点 |
-| Open Flow Canvas | `narrative-tool:open-flow-canvas` | 从当前 `.ncanvas` 反向导航到引用它的 Flow Canvas |
+| 导出当前对话 | `narrative-tool:export-current-dialogue` | 将当前打开的 `.ncanvas` 导出为 `.dialogue` |
+| 批量导出所有对话 | `narrative-tool:batch-export-all-dialogues` | 扫描导出范围内所有 `.ncanvas` 并批量导出（状态栏显示 x/n 进度） |
+| 验证 Flow→对话引用 | `narrative-tool:validate-references` | 检查所有 `.canvas` 中的 `.ncanvas` 引用是否断链 |
+| 创建角色 | `narrative-tool:create-character` | 在 `Characters/` 下创建角色档案 |
+| 创建地点 | `narrative-tool:create-location` | 在 `Locations/` 下创建地点档案 |
+| 创建物品 | `narrative-tool:create-item` | 在 `Items/` 下创建道具档案 |
+| 创建任务 | `narrative-tool:create-quest` | 在 `Quests/` 下创建任务档案 |
+| 创建 Flow | `narrative-tool:create-flow-canvas` | 输入名称，创建 `Flows/<名称>.canvas`（含标题节点）及同名 Fragment 文件夹 |
+| 创建 Flow 片段 | `narrative-tool:create-flow-fragment` | 选择父 Flow Canvas 后输入名称，在父 Flow 同名文件夹下创建片段，并自动在父 Canvas 中添加引用节点 |
+| 打开 Flow 画布 | `narrative-tool:open-flow-canvas` | 从当前 `.ncanvas` 反向导航到引用它的 Flow Canvas |
+
+> 命令 ID 保持英文不变，已配置的快捷键不受影响。
 
 ### 右键菜单
 
@@ -92,18 +94,18 @@ Dialogue Fragment (Narrative Canvas Node)
 
 | 菜单项 | 功能 |
 |--------|------|
-| Add dialogue node | 选择已有 `.ncanvas` 文件，添加为对话节点 |
-| Add character node | 从 `Characters/` 选择角色，添加为节点（绿色） |
-| Add location node | 从 `Locations/` 选择地点，添加为节点（橙色） |
-| Add item node | 从 `Items/` 选择道具，添加为节点（红色） |
-| Add quest node | 从 `Quests/` 选择任务，添加为节点（紫色） |
-| Open linked dialogue | 打开当前 Canvas 引用的 `.ncanvas` 对话文件 |
+| 添加对话节点 | 选择已有 `.ncanvas` 文件，添加为对话节点 |
+| 添加角色节点 | 从 `Characters/` 选择角色，添加为节点（绿色） |
+| 添加地点节点 | 从 `Locations/` 选择地点，添加为节点（橙色） |
+| 添加物品节点 | 从 `Items/` 选择道具，添加为节点（红色） |
+| 添加任务节点 | 从 `Quests/` 选择任务，添加为节点（紫色） |
+| 打开关联对话 | 打开当前 Canvas 引用的 `.ncanvas` 对话文件 |
 
 **在 `.ncanvas` 文件上右键（1 项）：**
 
 | 菜单项 | 功能 |
 |--------|------|
-| Open flow canvas | 反向导航到引用该对话的 Flow Canvas |
+| 打开 Flow 画布 | 反向导航到引用该对话的 Flow Canvas |
 
 ### 导出功能
 
@@ -111,21 +113,21 @@ Dialogue Fragment (Narrative Canvas Node)
 - **角色名解析**：自动从节点的 `cast` 字段解析说话角色名；正文中已有的 `角色: 文本` 前缀（含全角冒号 `：`）不会重复添加
 - **分支嵌套**：Choice 节点自动生成缩进的分支结构，支持嵌套选择
 - **MED 扩展**：支持 `set_flag`、`[#check]`、`[term]` 等 MED 状态管理语法（可在设置中开关）
-- **导出位置**：由设置中的 **Export Path** 控制（相对或绝对路径），三种导出方式（单文件/批量/自动）统一遵循
+- **导出位置**：由设置中的 **导出路径** 控制（相对或绝对路径），三种导出方式（单文件/批量/自动）统一遵循
 
 ### 自动导出
 
 - 在 Narrative Canvas 中保存 `.ncanvas` 文件后，自动导出为 `.dialogue`
-- 防抖延迟 2 秒，写入配置的 Export Path
-- 状态栏显示结果，5 秒后自动恢复
+- 防抖延迟 2 秒，写入配置的导出路径
+- 状态栏显示结果（失败时含具体错误），5 秒后自动恢复
 
 ### 设置项（设置 → 第三方插件 → Narrative Tool）
 
 | 设置项 | 说明 | 默认值 |
 |-------|------|--------|
-| **Export Path** | 导出目录，支持 Vault 相对路径（如 `Exports/`）或绝对路径（如 `D:/Godot/dialogues/`）。留空则在 `.ncanvas` 同目录导出 | `Exports` |
-| **MED Enabled** | 是否在导出中包含 MED 状态扩展语法 | 开启 |
-| **Export Scope** | 批量导出的扫描范围，`/` 表示整个 Vault | `/` |
+| **导出路径** | 导出目录，支持 Vault 相对路径（如 `Exports/`）或绝对路径（如 `D:/Godot/dialogues/`）。留空则在 `.ncanvas` 同目录导出。点 **浏览…** 按钮可弹出系统文件夹选择器直接选择 | `Exports` |
+| **MED 扩展语法** | 是否在导出中包含 MED 状态扩展语法 | 开启 |
+| **导出范围目录** | 批量导出的扫描范围，`/` 表示整个 Vault | `/` |
 
 ### 视觉效果
 
@@ -160,31 +162,31 @@ MyGameVault/
 ### 从零开始搭建一条剧情线
 
 1. **创建实体档案**
-   - `Ctrl+P` → `Create Character` → 输入 ID 和名称 → 自动生成 `Characters/<id>.md`
-   - `Ctrl+P` → `Create Location` → 生成 `Locations/<id>.md`
+   - `Ctrl+P` → `创建角色` → 输入 ID 和名称 → 自动生成 `Characters/<id>.md`
+   - `Ctrl+P` → `创建地点` → 生成 `Locations/<id>.md`
 
 2. **创建流程画布**
-   - `Ctrl+P` → `Create Flow` → 输入名称 "Chapter1" → 生成 `Flows/Chapter1.canvas` + `Flows/Chapter1/` 文件夹
+   - `Ctrl+P` → `创建 Flow` → 输入名称 "Chapter1" → 生成 `Flows/Chapter1.canvas` + `Flows/Chapter1/` 文件夹
 
 3. **在流程中添加实体节点**
-   - 在文件列表中右键 `Flows/Chapter1.canvas` → `Add character node` → 选择角色
+   - 在文件列表中右键 `Flows/Chapter1.canvas` → `添加角色节点` → 选择角色
 
 4. **在流程中挂载对话**
-   - 右键 `Flows/Chapter1.canvas` → `Add dialogue node` → 选择 `.ncanvas` 文件
+   - 右键 `Flows/Chapter1.canvas` → `添加对话节点` → 选择 `.ncanvas` 文件
 
 5. **编辑对话**
    - 双击 Canvas 中的对话节点，在 Narrative Canvas 编辑器中编写对话内容
 
 6. **导出对话**
-   - 单文件：打开 `.ncanvas` → `Ctrl+P` → `Export current dialogue`
+   - 单文件：打开 `.ncanvas` → `Ctrl+P` → `导出当前对话`
    - 自动：保存 `.ncanvas` 后自动导出
-   - 批量：`Ctrl+P` → `Batch Export All Dialogues`
+   - 批量：`Ctrl+P` → `批量导出所有对话`
 
 7. **校验引用完整性**
-   - `Ctrl+P` → `Validate Flow→Dialogue references`
+   - `Ctrl+P` → `验证 Flow→对话引用`
 
 8. **反向导航**
-   - 在 `.ncanvas` 文件上右键 → `Open flow canvas`，跳回所属 Flow Canvas
+   - 在 `.ncanvas` 文件上右键 → `打开 Flow 画布`，跳回所属 Flow Canvas
 
 ---
 

@@ -70,8 +70,8 @@ describe('StatusBarManager', () => {
         const manager = new StatusBarManager(plugin);
         manager.setState('pending');
 
-        assert.ok(manager.element.innerHTML.includes('Narrative Toolchain'),
-            'should contain "Narrative Toolchain" text');
+        assert.ok(manager.element.innerHTML.includes('叙事工具链'),
+            'should contain "叙事工具链" text');
         assert.ok(manager.element.className.includes('nt-status-pending'),
             'should have nt-status-pending class');
 
@@ -79,16 +79,16 @@ describe('StatusBarManager', () => {
     });
 
     // -----------------------------------------------------------------------
-    // Test 3: setState('exporting') shows "Exporting..." with loading state
+    // Test 3: setState('exporting') shows "导出中..." with loading state
     // -----------------------------------------------------------------------
 
-    it('setState(exporting) displays Exporting... with loading state', () => {
+    it('setState(exporting) displays 导出中... with loading state', () => {
         const plugin = createMockPlugin();
         const manager = new StatusBarManager(plugin);
         manager.setState('exporting');
 
-        assert.ok(manager.element.innerHTML.includes('Exporting'),
-            'should contain "Exporting" text');
+        assert.ok(manager.element.innerHTML.includes('导出中'),
+            'should contain "导出中" text');
         assert.ok(manager.element.className.includes('nt-status-exporting'),
             'should have nt-status-exporting class');
 
@@ -106,8 +106,7 @@ describe('StatusBarManager', () => {
 
         const html = manager.element.innerHTML;
         assert.ok(html.includes('12'), 'should show exported count 12');
-        assert.ok(html.includes('exported') || html.includes('0 failed'),
-            'should mention exported or failed');
+        assert.ok(html.includes('已导出'), 'should mention 已导出');
         assert.ok(manager.element.className.includes('nt-status-success'),
             'should have nt-status-success class');
 
@@ -141,12 +140,12 @@ describe('StatusBarManager', () => {
 
         manager.setState('exporting', { count: 3, total: 10 });
         const exportingHTML = manager.element.innerHTML;
-        assert.ok(exportingHTML.includes('Exporting'), 'first state: should show Exporting');
+        assert.ok(exportingHTML.includes('导出中'), 'first state: should show 导出中');
 
         manager.setState('success', { exported: 10, failed: 0 });
         const successHTML = manager.element.innerHTML;
-        assert.ok(!successHTML.includes('Exporting'), 'second state: should NOT contain Exporting');
-        assert.ok(successHTML.includes('exported'), 'second state: should contain exported');
+        assert.ok(!successHTML.includes('导出中'), 'second state: should NOT contain 导出中');
+        assert.ok(successHTML.includes('已导出'), 'second state: should contain 已导出');
 
         manager.destroy();
     });

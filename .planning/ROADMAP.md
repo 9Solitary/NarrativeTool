@@ -28,7 +28,7 @@
 - [x] **Phase 5: Plugin Merge + Bug Fixes** — 三插件合并为 narrative-tool，v0.1 的 7 项已知缺陷全部修复 (completed 2026-08-06)
 - [x] **Phase 6: Engine Features** — Choice 循环返回 + 共享内容去重，导出引擎两遍式改造 (completed 2026-08-07, UAT 通过)
 - [x] **Phase 7: Build + Deployment** — 根目录 npm run build 一键构建，output/narrative-tool/ 部署产物 (completed 2026-08-07)
-- [ ] **Phase 8: UX** — 全面中文化、Export Path 浏览按钮、导出状态反馈优化
+- [ ] **Phase 8: UX** — 全面中文化、Export Path 浏览按钮、导出状态反馈优化（代码完成，待人工 UAT）
 - [ ] **Phase 9: Verification** — Phase 1-4 全部补 VERIFICATION.md + Nyquist 验证
 
 ## Phase Details
@@ -92,8 +92,10 @@ Plans:
   2. All command names, context menus, status bar messages, settings labels, and notifications are in Chinese; command IDs unchanged so existing hotkeys and links keep working
   3. Batch export shows progress (x/n) in the status bar as it processes files
   4. When export fails, the status bar or notification shows the specific error message (e.g. missing directory, invalid syntax) instead of a generic failure
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 1 plan
+
+Plans:
+- [x] 08-01-PLAN.md — UX-01 浏览按钮（remote.dialog，D5 已实测 remote-ok）+ UX-02 全面中文化（命令 ID 不变）+ UX-03 批量进度 x/n 与失败具体错误
 
 ### Phase 9: Verification
 **Goal**: Phase 1-4 全部具备正式验证证据，v1.0 可审计交付

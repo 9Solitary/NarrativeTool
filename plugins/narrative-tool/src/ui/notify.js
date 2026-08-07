@@ -1,8 +1,7 @@
 // notify.js -- Notice wrapper (D-14)
 //
-// The single consolidation point for user-facing messages. New messages
-// added from Phase 5 onward may use Chinese strings; existing English
-// strings are preserved verbatim — the full Chinese sweep is Phase 8.
+// The single consolidation point for user-facing messages. All user-facing
+// text is Chinese (Phase 8 UX-02 sweep complete).
 
 const { Notice } = require('obsidian');
 

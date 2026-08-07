@@ -6,16 +6,16 @@ status: in_progress
 last_updated: 2026-08-07T00:00:00.000Z
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 60
+  completed_phases: 4
+  total_plans: 9
+  completed_plans: 9
+  percent: 80
 ---
 
 # Project State: Obsidian Narrative Toolchain
 
 **Last Updated:** 2026-08-07
-**Milestone:** v1.0 — IN PROGRESS (Phase 7 complete)
+**Milestone:** v1.0 — IN PROGRESS (Phase 8 code complete, UAT pending)
 
 ## Project Reference
 
@@ -23,19 +23,20 @@ See: .planning/PROJECT.md (updated 2026-08-06)
 
 **Core Value:** 策划在 Obsidian 中完成 Flow → Dialogue 的全链路编辑，并一键导出为 Godot 可读取的 `.dialogue` 文件。
 
-**Current Focus:** Phase 8 UX — 全面中文化 + Export Path 浏览按钮 + 导出状态反馈
+**Current Focus:** Phase 8 UX — 代码完成待人工 UAT；之后 Phase 9 验证补档
 
 ## Current Position
 
 | Attribute | Value |
 |-----------|-------|
-| Milestone | v1.0 正式版 — IN PROGRESS（Phase 7/9 completed, Phase 8-9 pending） |
+| Milestone | v1.0 正式版 — IN PROGRESS（Phase 8/9 code complete, Phase 9 pending） |
 | v0.1 MVP | SHIPPED 2026-08-06（Phase 1-4, 12 plans） |
 | Phase 5 | Plugin Merge + Bug Fixes — 5/5 plans complete, UAT passed 2026-08-07 |
 | Phase 6 | Engine Features — 2/2 plans complete, UAT passed 2026-08-07 |
 | Phase 7 | Build + Deployment — 1/1 plan complete（npm run build → output/narrative-tool/） |
+| Phase 8 | UX — 1/1 plan complete（中文化+浏览按钮+进度反馈），待人工 UAT |
 | Tests | 310/310 passing |
-| Next | Phase 8: UX (UX-01 浏览按钮 / UX-02 中文化 / UX-03 反馈优化) |
+| Next | Phase 8 人工 UAT → Phase 9: Verification |
 
 ## Performance Metrics
 
@@ -63,6 +64,7 @@ See: .planning/PROJECT.md (updated 2026-08-06)
 - 2026-08-07 用户决策：D2 Choice 循环 = 画环到 Choice 节点；D3 汇合命名 = 混合（优先已有 Marker）
 - 2026-08-07 UAT 全部通过（A8 迁移验证用户主动跳过）
 - 2026-08-07 Flow 创建重构为 articy 风格：只需名称；Flow 自带同名 Fragment 文件夹；Fragment 必须挂父 Flow 并回写引用节点；canvas-templates 模板模块整体下线（含 12 个 golden 测试）
+- 2026-08-07 Phase 8：D5 实测 remote-ok → UX-01 用 electron.remote.dialog 文件夹选择器；UX-02 全面中文化（命令 ID 不变，esbuild 产物中文为 \uXXXX 转义，属正常）；UX-03 batch-export 增加 onProgress 回调 + errors 明细
 
 ### Known Gaps (deferred to v0.2)
 
@@ -96,7 +98,7 @@ Items acknowledged and deferred at milestone close on 2026-08-06. **Phase 5 (202
 | nyquist | All 4 phases lack VALIDATION.md | deferred to Phase 9 |
 | features | FEAT-01 Choice 循环返回 / FEAT-02 共享去重 | ✅ done (Phase 6, 2026-08-07) — Godot DM 编译验证 pending |
 | engineering | ENG-02 output/ 部署目录 / ENG-03 构建脚本 | Phase 7 |
-| ux | UX-01 浏览按钮 / UX-02 中文化 / UX-03 反馈优化 | Phase 8 |
+| ux | UX-01 浏览按钮 / UX-02 中文化 / UX-03 反馈优化 | ✅ done (Phase 8, 2026-08-07) — 待人工 UAT |
 | uat | Phase 5 人工 UAT（8 项，见 05-VERIFICATION.md） | pending human verification |
 
 ---

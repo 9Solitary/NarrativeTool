@@ -52,7 +52,7 @@ async function validateReferences(app) {
                     canvasPath: canvasFile.path,
                     nodeId: '',
                     referencedFile: '',
-                    reason: 'invalid canvas JSON'
+                    reason: 'canvas JSON 格式错误'
                 });
                 continue;
             }
@@ -73,7 +73,7 @@ async function validateReferences(app) {
                         canvasPath: canvasFile.path,
                         nodeId: node.id || '',
                         referencedFile: node.file,
-                        reason: 'file not found'
+                        reason: '引用的文件不存在'
                     });
                 }
             }
@@ -83,7 +83,7 @@ async function validateReferences(app) {
                 canvasPath: canvasFile.path,
                 nodeId: '',
                 referencedFile: '',
-                reason: `read error: ${err.message}`
+                reason: `读取失败：${err.message}`
             });
         }
     }
