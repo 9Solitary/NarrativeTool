@@ -237,7 +237,8 @@ Character: 这是角色的对话行。
 ## 开发
 
 ```bash
-# 根目录一键构建：esbuild 编译 + 部署产物到 output/narrative-tool/
+# 根目录一键构建：esbuild 编译 narrative-tool + 重建定制版 Narrative Canvas，
+# 部署产物到 output/narrative-tool/ 和 output/narrative-canvas/
 # （首次需先 npm --prefix plugins/narrative-tool install）
 npm run build
 
