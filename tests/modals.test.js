@@ -29,6 +29,16 @@ const app = { vault: {} };
 const fileStub = { path: 'Dialogues/inn.ncanvas', basename: 'inn', extension: 'ncanvas' };
 
 // ===========================================================================
+// Helpers
+// ===========================================================================
+
+// The cancel callback is deferred (100ms) so a pending onChooseSuggestion
+// wins the race on Obsidian versions that fire onClose first (UAT A4).
+function waitForDeferred() {
+    return new Promise((resolve) => setTimeout(resolve, 150));
+}
+
+// ===========================================================================
 // FileSuggesterModal
 // ===========================================================================
 
@@ -41,21 +51,33 @@ describe('FileSuggesterModal', () => {
         assert.strictEqual(chosen, fileStub);
     });
 
-    it('invokes onChoose with null when dismissed without a choice (WR-02)', () => {
+    it('invokes onChoose with null when dismissed without a choice (WR-02)', async () => {
         let chosen = 'unset';
         const modal = new FileSuggesterModal(app, [fileStub], (f) => { chosen = f; });
         modal.open();
         modal.close();
+        await waitForDeferred();
         assert.strictEqual(chosen, null, 'cancel must resolve the callback with null');
     });
 
-    it('does not double-fire onClose after a choice was made', () => {
+    it('does not double-fire onClose after a choice was made', async () => {
         const calls = [];
         const modal = new FileSuggesterModal(app, [fileStub], (f) => { calls.push(f); });
         modal.open();
         modal.onChooseSuggestion(fileStub);
         modal.close();
+        await waitForDeferred();
         assert.deepStrictEqual(calls, [fileStub], 'callback fires exactly once with the chosen file');
+    });
+
+    it('selection wins when onClose fires before onChooseSuggestion (A4 race)', async () => {
+        const calls = [];
+        const modal = new FileSuggesterModal(app, [fileStub], (f) => { calls.push(f); });
+        modal.open();
+        modal.close();                       // onClose first (older/newer Obsidian ordering)
+        modal.onChooseSuggestion(fileStub);  // choose arrives within the deferred window
+        await waitForDeferred();
+        assert.deepStrictEqual(calls, [fileStub], 'choose must win the onClose/onChoose race');
     });
 });
 
@@ -72,11 +94,12 @@ describe('StringSuggesterModal', () => {
         assert.strictEqual(chosen, 'Chapter');
     });
 
-    it('invokes onChoose with null when dismissed without a choice (WR-02)', () => {
+    it('invokes onChoose with null when dismissed without a choice (WR-02)', async () => {
         let chosen = 'unset';
         const modal = new StringSuggesterModal(app, ['Chapter'], (s) => { chosen = s; });
         modal.open();
         modal.close();
+        await waitForDeferred();
         assert.strictEqual(chosen, null, 'cancel must resolve the callback with null');
     });
 });
@@ -86,11 +109,12 @@ describe('StringSuggesterModal', () => {
 // ===========================================================================
 
 describe('FolderSuggestModal', () => {
-    it('invokes onChoose with null when dismissed without a choice (WR-02)', () => {
+    it('invokes onChoose with null when dismissed without a choice (WR-02)', async () => {
         let chosen = 'unset';
         const modal = new FolderSuggestModal(app, ['Flows'], (f) => { chosen = f; });
         modal.open();
         modal.close();
+        await waitForDeferred();
         assert.strictEqual(chosen, null, 'cancel must resolve the callback with null');
     });
 });

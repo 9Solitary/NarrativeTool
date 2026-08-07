@@ -8,7 +8,9 @@
 // Wiring carried by this plan:
 //   D-08  All 10 commands unified under the narrative-tool: prefix
 //   D-06  Settings migration from legacy plugin data.json files on first load
-//   BUG-04  create-flow-canvas / create-flow-fragment use createFlowCanvas/createFlowFragment
+//   (2026-08-07) Flow creation redesigned articy-style: name-only prompts,
+//   Flows/<name>.canvas + Flows/<name>/ folder, fragments live under the
+//   parent flow's folder and are linked back into the parent canvas
 //   BUG-05  open-flow-canvas command + .ncanvas file-menu entry via findFlowCanvasForDialogue
 //   BUG-06  styles.css injected at runtime (id narrative-tool-styles) + entity .md annotation
 //   BUG-07  file menu on .canvas files offers all 4 entity node types incl. Add quest node
@@ -18,14 +20,13 @@ const { Plugin, TFile, normalizePath } = require('obsidian');
 const { DEFAULT_SETTINGS, NarrativeToolSettingTab } = require('./ui/settings');
 const { StatusBarManager } = require('./ui/status-bar');
 const { notify } = require('./ui/notify');
-const { FileSuggesterModal, StringSuggesterModal, promptForInput } = require('./ui/modals');
+const { FileSuggesterModal, promptForInput } = require('./ui/modals');
 const { exportAllDialogues } = require('./commands/batch-export');
 const { setupAutoExport, teardownAutoExport } = require('./commands/auto-export');
 const { validateReferences } = require('./commands/reference-validator');
 const { exportCurrentDialogue } = require('./commands/export-current');
 const { createCharacterMd, createLocationMd, createQuestMd, createItemMd } = require('./flow/entity-templates');
-const { FLOW_TEMPLATES, FRAGMENT_TEMPLATES, createFlowCanvas, createFlowFragment } = require('./flow/canvas-templates');
-const { generateNodeId, addNodeToCanvas, addDialogueNodeToCanvas } = require('./flow/canvas-utils');
+const { generateNodeId, createCanvas, addNodeToCanvas, addDialogueNodeToCanvas } = require('./flow/canvas-utils');
 const { openDialogueFile, openFlowCanvas, openFileInSplit, findFlowCanvasForDialogue } = require('./flow/navigation');
 const styles = require('./styles.css');
 
@@ -70,18 +71,24 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         // D-06 migration: only on first load (own data.json absent).
         // Guard: own data.json exists -> skip, never re-runs over user edits.
         if (!saved) {
+            let migrated = false;
             for (const id of ['narrative-project', 'dialogue-export', 'flow-tools']) {
                 try {
                     const raw = await this.app.vault.adapter.read('.obsidian/plugins/' + id + '/data.json');
                     const json = JSON.parse(raw);
                     // Object.assign over DEFAULT_SETTINGS — only known keys win
                     Object.assign(this.settings, json);
+                    migrated = true;
                 } catch (e) {
                     // File absent or unreadable — skip
                 }
             }
             await this.saveData(this.settings);
-            notify('已迁移旧插件设置', 'info');
+            // Only notify when legacy settings were actually migrated —
+            // a fresh install with no legacy plugins stays silent (UAT A8).
+            if (migrated) {
+                notify('已迁移旧插件设置', 'info');
+            }
         }
 
         // 2. Register the settings tab so it appears in Obsidian Settings
@@ -205,14 +212,14 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             });
         }
 
-        // 8. Create Flow Canvas (BUG-04 — template-based via createFlowCanvas)
+        // 8. Create Flow (name only → canvas + fragment folder)
         this.addCommand({
             id: 'narrative-tool:create-flow-canvas',
-            name: 'Create Flow Canvas',
+            name: 'Create Flow',
             callback: () => this._createFlowCanvasFromCommand(),
         });
 
-        // 9. Create Flow Fragment (BUG-04 — template-based via createFlowFragment)
+        // 9. Create Flow Fragment (parent flow picker → linked into parent)
         this.addCommand({
             id: 'narrative-tool:create-flow-fragment',
             name: 'Create Flow Fragment',
@@ -387,271 +394,131 @@ module.exports = class NarrativeToolPlugin extends Plugin {
     }
 
     // ================================================================
-    // Flow Canvas Creation Workflow (BUG-04 — restored from 4deaef8)
+    // Flow Canvas / Fragment Creation Workflow (articy-style hierarchy)
+    //
+    // Create Flow Canvas:   asks for a name only → Flows/<name>.canvas
+    //                       (single title node) + Flows/<name>/ folder that
+    //                       collects its fragments and dialogues.
+    // Create Flow Fragment: pick parent Flow canvas → name → created under
+    //                       <parent dir>/<parent basename>/, and a file node
+    //                       linking the fragment is appended to the parent.
     // ================================================================
 
     async _createFlowCanvasFromCommand() {
-        // Step 1: Template type selection
-        const types = [FLOW_TEMPLATES.CHAPTER, FLOW_TEMPLATES.QUEST, FLOW_TEMPLATES.WORLD_EVENT];
-        const typeLabels = {
-            [FLOW_TEMPLATES.CHAPTER]: 'Chapter',
-            [FLOW_TEMPLATES.QUEST]: 'Quest',
-            [FLOW_TEMPLATES.WORLD_EVENT]: 'World Event',
-        };
-
-        const templateType = await new Promise((resolve) => {
-            const displayItems = types.map(t => typeLabels[t]);
-            new StringSuggesterModal(this.app, displayItems, (chosen) => {
-                const idx = displayItems.indexOf(chosen);
-                resolve(idx >= 0 ? types[idx] : null);
-            }).open();
-        });
-
-        if (!templateType) {
-            notify('Create Flow Canvas cancelled');
+        // Step 1: The name is all we ask for
+        const name = await promptForInput(this.app, 'Create Flow', 'e.g., Chapter 1');
+        if (!name || !name.trim()) {
+            notify('Create Flow cancelled (no name)');
             return;
         }
 
-        // Step 2: Collect template-specific parameters
-        const params = await this._collectFlowCanvasParams(templateType);
-        if (!params) return; // cancelled mid-collection
-
-        // Step 3: Prompt for filename
-        let defaultName = '';
-        if (templateType === FLOW_TEMPLATES.CHAPTER) defaultName = params.title || '';
-        else if (templateType === FLOW_TEMPLATES.QUEST) defaultName = params.questName || '';
-        else if (templateType === FLOW_TEMPLATES.WORLD_EVENT) defaultName = params.eventName || '';
-
-        const filename = await promptForInput(this.app, 'Flow Canvas Filename',
-            'e.g., ' + slugify(defaultName || 'my-flow'));
-        if (!filename || !filename.trim()) {
-            notify('Create Flow Canvas cancelled (no filename)');
-            return;
-        }
-
-        // Step 4: Generate canvas JSON via the template module (BUG-04)
-        const canvasJson = createFlowCanvas(templateType, params);
-
-        // Step 5: Ensure Flows/ directory exists
+        // Step 2: Paths (T-05-10: path traversal mitigation)
         const folder = 'Flows';
-        const folderObj = this.app.vault.getAbstractFileByPath(folder);
-        if (!folderObj) {
-            await this.app.vault.createFolder(folder);
-        }
-
-        // Step 6: Build file path (T-03-07 / T-05-10: path traversal mitigation)
-        const safeName = slugify(filename.trim()).replace(/\.\./g, '').replace(/[\/\\]/g, '-');
+        const safeName = slugify(name.trim()).replace(/\.\./g, '').replace(/[\/\\]/g, '-');
         const filePath = normalizePath(folder + '/' + safeName + '.canvas');
+        const fragFolder = normalizePath(folder + '/' + safeName);
 
         if (!filePath.startsWith(folder + '/')) {
             notify('Invalid filename: path traversal not allowed');
             return;
         }
-
-        // Step 7: Check for duplicate
-        const existing = this.app.vault.getAbstractFileByPath(filePath);
-        if (existing) {
+        if (this.app.vault.getAbstractFileByPath(filePath)) {
             notify('File already exists: ' + filePath);
             return;
         }
 
-        // Step 8: Write file
-        await this.app.vault.create(filePath, canvasJson);
-        notify('Created: ' + filePath);
+        // Step 3: Minimal canvas — a single title node
+        const canvas = addNodeToCanvas(createCanvas(), {
+            id: generateNodeId(),
+            type: 'text',
+            text: '# ' + name.trim(),
+            x: 0, y: 0, width: 400, height: 120,
+        });
 
-        // Step 9: Open the new Flow Canvas
+        // Step 4: Create Flows/, the canvas file, and its fragment folder
+        if (!this.app.vault.getAbstractFileByPath(folder)) {
+            await this.app.vault.createFolder(folder);
+        }
+        await this.app.vault.create(filePath, JSON.stringify(canvas, null, '\t'));
+        if (!this.app.vault.getAbstractFileByPath(fragFolder)) {
+            await this.app.vault.createFolder(fragFolder);
+        }
+        notify('Created: ' + filePath);
         await this.app.workspace.openLinkText(filePath, '', true);
     }
 
-    async _collectFlowCanvasParams(templateType) {
-        switch (templateType) {
-        case FLOW_TEMPLATES.CHAPTER: {
-            const title = await promptForInput(this.app, 'Chapter Title', 'e.g., Chapter 1: The Village');
-            if (!title) return null;
-            const entryScene = await this._pickNcanvasFile('Select Entry Scene (.ncanvas)');
-            // NPCs (comma-separated file paths)
-            const npcsInput = await promptForInput(this.app, 'Key NPCs (comma-separated file paths)',
-                'e.g., Characters/bob.md, Characters/alice.md');
-            const npcs = npcsInput ? npcsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
-            // Locations (comma-separated file paths)
-            const locsInput = await promptForInput(this.app, 'Key Locations (comma-separated file paths)',
-                'e.g., Locations/village.md, Locations/inn.md');
-            const locations = locsInput ? locsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
-            return { title, entryScene, npcs, locations };
-        }
-        case FLOW_TEMPLATES.QUEST: {
-            const questName = await promptForInput(this.app, 'Quest Name', 'e.g., Rescue the Villager');
-            if (!questName) return null;
-            const giverChar = await this._pickEntityFile('character', 'Select Quest Giver (Character .md)');
-            const stagesInput = await promptForInput(this.app, 'Quest Stages (comma-separated)',
-                'e.g., Accept quest, Find the key, Rescue the villager');
-            const stages = stagesInput ? stagesInput.split(',').map(s => s.trim()).filter(Boolean) : [];
-            const reward = await promptForInput(this.app, 'Reward', 'e.g., 500 gold, Sword of Valor');
-            return { questName, giverChar, stages, reward };
-        }
-        case FLOW_TEMPLATES.WORLD_EVENT: {
-            const eventName = await promptForInput(this.app, 'Event Name', 'e.g., Festival of Stars');
-            if (!eventName) return null;
-            const trigger = await promptForInput(this.app, 'Trigger Condition', 'e.g., Player enters the plaza after sunset');
-            const affectedLocs = [];
-            // Prompt for up to 2 affected locations
-            const loc1 = await this._pickEntityFile('location', 'Select Affected Location 1 (optional, press Esc to skip)');
-            if (loc1) affectedLocs.push(loc1);
-            if (loc1) {
-                const loc2 = await this._pickEntityFile('location', 'Select Affected Location 2 (optional, press Esc to skip)');
-                if (loc2) affectedLocs.push(loc2);
-            }
-            const outcome = await promptForInput(this.app, 'Outcome', 'e.g., All NPCs become friendly for 24 hours');
-            return { eventName, trigger, affectedLocs, outcome };
-        }
-        default:
-            return null;
-        }
-    }
-
     // ================================================================
-    // Flow Fragment Creation Workflow (BUG-04 — restored from 4deaef8)
+    // Flow Fragment Creation Workflow (must belong to a parent Flow)
     // ================================================================
 
     async _createFlowFragmentFromCommand() {
-        // Step 1: Template type selection
-        const types = [FRAGMENT_TEMPLATES.QUEST_DETAIL, FRAGMENT_TEMPLATES.SCENE_BREAKDOWN];
-        const typeLabels = {
-            [FRAGMENT_TEMPLATES.QUEST_DETAIL]: 'Quest Detail',
-            [FRAGMENT_TEMPLATES.SCENE_BREAKDOWN]: 'Scene Breakdown',
-        };
-
-        const templateType = await new Promise((resolve) => {
-            const displayItems = types.map(t => typeLabels[t]);
-            new StringSuggesterModal(this.app, displayItems, (chosen) => {
-                const idx = displayItems.indexOf(chosen);
-                resolve(idx >= 0 ? types[idx] : null);
-            }).open();
+        // Step 1: Pick the parent Flow canvas — a fragment always belongs to one
+        const canvasFiles = this.app.vault.getFiles()
+            .filter(f => f.extension === 'canvas');
+        if (canvasFiles.length === 0) {
+            notify('No Flow canvas found — create one first');
+            return;
+        }
+        const parent = await new Promise((resolve) => {
+            new FileSuggesterModal(this.app, canvasFiles, (f) => resolve(f)).open();
         });
-
-        if (!templateType) {
+        if (!parent) {
             notify('Create Flow Fragment cancelled');
             return;
         }
 
-        // Step 2: Collect params
-        const params = await this._collectFlowFragmentParams(templateType);
-        if (!params) return;
-
-        // Step 3: Filename
-        let defaultName = '';
-        if (templateType === FRAGMENT_TEMPLATES.QUEST_DETAIL) defaultName = params.stepName || '';
-        else if (templateType === FRAGMENT_TEMPLATES.SCENE_BREAKDOWN) defaultName = params.sceneName || '';
-
-        const filename = await promptForInput(this.app, 'Flow Fragment Filename',
-            'e.g., ' + slugify(defaultName || 'fragment'));
-        if (!filename || !filename.trim()) {
-            notify('Create Flow Fragment cancelled (no filename)');
+        // Step 2: The name is all we ask for
+        const name = await promptForInput(this.app, 'Create Flow Fragment', 'e.g., Village Encounter');
+        if (!name || !name.trim()) {
+            notify('Create Flow Fragment cancelled (no name)');
             return;
         }
 
-        // Step 4: Generate canvas JSON via the template module (BUG-04)
-        const canvasJson = createFlowFragment(templateType, params);
+        // Step 3: Fragment lives under <parent dir>/<parent basename>/
+        // (T-05-10: path traversal mitigation)
+        const parentDir = parent.parent && parent.parent.path !== '/' ? parent.parent.path : '';
+        const safeName = slugify(name.trim()).replace(/\.\./g, '').replace(/[\/\\]/g, '-');
+        const fragFolder = normalizePath((parentDir ? parentDir + '/' : '') + parent.basename);
+        const filePath = normalizePath(fragFolder + '/' + safeName + '.canvas');
 
-        // Step 5: Ensure Flows/ directory exists
-        const folder = 'Flows';
-        const folderObj = this.app.vault.getAbstractFileByPath(folder);
-        if (!folderObj) {
-            await this.app.vault.createFolder(folder);
-        }
-
-        // Step 6: Build file path (T-03-07 / T-05-10: path traversal mitigation)
-        const safeName = slugify(filename.trim()).replace(/\.\./g, '').replace(/[\/\\]/g, '-');
-        const filePath = normalizePath(folder + '/' + safeName + '.canvas');
-
-        if (!filePath.startsWith(folder + '/')) {
+        if (!filePath.startsWith(fragFolder + '/')) {
             notify('Invalid filename: path traversal not allowed');
             return;
         }
-
-        // Check for duplicate
-        const existing = this.app.vault.getAbstractFileByPath(filePath);
-        if (existing) {
+        if (this.app.vault.getAbstractFileByPath(filePath)) {
             notify('File already exists: ' + filePath);
             return;
         }
 
-        // Write + open
-        await this.app.vault.create(filePath, canvasJson);
+        // Step 4: Create the fragment canvas (single title node)
+        const canvas = addNodeToCanvas(createCanvas(), {
+            id: generateNodeId(),
+            type: 'text',
+            text: '# ' + name.trim(),
+            x: 0, y: 0, width: 400, height: 120,
+        });
+        if (!this.app.vault.getAbstractFileByPath(fragFolder)) {
+            await this.app.vault.createFolder(fragFolder);
+        }
+        await this.app.vault.create(filePath, JSON.stringify(canvas, null, '\t'));
+
+        // Step 5: Link back — append a file node for the fragment to the parent canvas
+        try {
+            const content = await this.app.vault.read(parent);
+            const parentCanvas = JSON.parse(content);
+            const updated = addNodeToCanvas(parentCanvas, {
+                id: generateNodeId(),
+                type: 'file',
+                file: filePath,
+                x: 0, y: 0, width: 300, height: 200,
+            });
+            await this.app.vault.modify(parent, JSON.stringify(updated, null, '\t'));
+        } catch (e) {
+            notify('Fragment created, but failed to link into parent canvas: ' + e.message);
+        }
+
         notify('Created: ' + filePath);
         await this.app.workspace.openLinkText(filePath, '', true);
-    }
-
-    async _collectFlowFragmentParams(templateType) {
-        switch (templateType) {
-        case FRAGMENT_TEMPLATES.QUEST_DETAIL: {
-            const stepName = await promptForInput(this.app, 'Quest Step Name', 'e.g., Talk to the innkeeper');
-            if (!stepName) return null;
-            const dialogueRef = await this._pickNcanvasFile('Select Dialogue Reference (.ncanvas)');
-            const branch1 = await promptForInput(this.app, 'Branch A', 'e.g., Accept the quest');
-            const branch2 = await promptForInput(this.app, 'Branch B', 'e.g., Decline');
-            const condition = await promptForInput(this.app, 'Condition', 'e.g., Player reputation >= 10');
-            return { stepName, dialogueRef, branch1: branch1 || '', branch2: branch2 || '', condition: condition || '' };
-        }
-        case FRAGMENT_TEMPLATES.SCENE_BREAKDOWN: {
-            const sceneName = await promptForInput(this.app, 'Scene Name', 'e.g., Inn - First Encounter');
-            if (!sceneName) return null;
-            // Characters (comma-separated file paths)
-            const charsInput = await promptForInput(this.app, 'Characters Present (comma-separated file paths)',
-                'e.g., Characters/innkeeper.md, Characters/guard.md');
-            const characters = charsInput ? charsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
-            // Beats
-            const beatsInput = await promptForInput(this.app, 'Scene Beats (comma-separated)',
-                'e.g., Enter inn, Greet innkeeper, Receive quest info');
-            const beats = beatsInput ? beatsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
-            return { sceneName, characters, beats };
-        }
-        default:
-            return null;
-        }
-    }
-
-    // ================================================================
-    // File Pickers (SuggesterModal-based)
-    // ================================================================
-
-    /**
-     * Show a file picker for .ncanvas files.
-     * Returns the chosen file's vault-relative path, or empty string if cancelled.
-     */
-    async _pickNcanvasFile(title) {
-        const ncanvasFiles = this.app.vault.getFiles()
-            .filter(f => f.extension === 'ncanvas');
-        if (ncanvasFiles.length === 0) {
-            notify('No .ncanvas files found in vault');
-            return '';
-        }
-        // The suggester resolves null when dismissed (WR-02) — resolve ''
-        // here so a cancelled pick returns the documented empty string
-        // instead of leaving the awaiting command flow hanging forever.
-        return new Promise((resolve) => {
-            new FileSuggesterModal(this.app, ncanvasFiles, (file) => {
-                resolve(file ? file.path : '');
-            }).open();
-        });
-    }
-
-    /**
-     * Show a file picker for entity .md files of a specific type.
-     * Returns the chosen file's vault-relative path, or empty string if cancelled.
-     */
-    async _pickEntityFile(entityType, title) {
-        const files = this._getEntityFiles(entityType);
-        if (files.length === 0) {
-            notify(`No ${entityType} .md files found in vault`);
-            return '';
-        }
-        // See _pickNcanvasFile — cancelled picks resolve '' (WR-02).
-        return new Promise((resolve) => {
-            new FileSuggesterModal(this.app, files, (file) => {
-                resolve(file ? file.path : '');
-            }).open();
-        });
     }
 
     // ================================================================
@@ -897,7 +764,19 @@ module.exports = class NarrativeToolPlugin extends Plugin {
     // ================================================================
 
     async _openFlowCanvasFromCommand() {
-        const activeFile = this.app.workspace.getActiveFile();
+        let activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile || activeFile.extension !== 'ncanvas') {
+            // Narrative Canvas opens .ncanvas in a custom ItemView, so
+            // getActiveFile() returns null. Its view exposes the file as a
+            // path STRING on view.file — resolve it through the active leaf.
+            const leaf = this.app.workspace.activeLeaf;
+            const viewFile = leaf && leaf.view ? leaf.view.file : null;
+            const path = typeof viewFile === 'string' ? viewFile : (viewFile && viewFile.path);
+            if (path && path.endsWith('.ncanvas')) {
+                const resolved = this.app.vault.getAbstractFileByPath(path);
+                if (resolved) activeFile = resolved;
+            }
+        }
         if (!activeFile || activeFile.extension !== 'ncanvas') {
             notify('Open a .ncanvas file first');
             return;

@@ -6,16 +6,16 @@ status: in_progress
 last_updated: 2026-08-07T00:00:00.000Z
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 20
+  completed_phases: 2
+  total_plans: 7
+  completed_plans: 7
+  percent: 40
 ---
 
 # Project State: Obsidian Narrative Toolchain
 
 **Last Updated:** 2026-08-07
-**Milestone:** v1.0 — IN PROGRESS (Phase 5 complete)
+**Milestone:** v1.0 — IN PROGRESS (Phase 6 complete)
 
 ## Project Reference
 
@@ -23,17 +23,18 @@ See: .planning/PROJECT.md (updated 2026-08-06)
 
 **Core Value:** 策划在 Obsidian 中完成 Flow → Dialogue 的全链路编辑，并一键导出为 Godot 可读取的 `.dialogue` 文件。
 
-**Current Focus:** Phase 6 Engine Features — Choice 循环返回 + 共享内容去重
+**Current Focus:** Phase 7 Build + Deployment — npm run build 一键构建 + output/ 部署目录
 
 ## Current Position
 
 | Attribute | Value |
 |-----------|-------|
-| Milestone | v1.0 正式版 — IN PROGRESS（Phase 5/9 completed, Phase 6-9 pending） |
+| Milestone | v1.0 正式版 — IN PROGRESS（Phase 6/9 completed, Phase 7-9 pending） |
 | v0.1 MVP | SHIPPED 2026-08-06（Phase 1-4, 12 plans） |
-| Phase 5 | Plugin Merge + Bug Fixes — 5/5 plans complete, 7/7 verified, human UAT pending |
-| Tests | 266/266 passing |
-| Next | Phase 6: Engine Features (FEAT-01, FEAT-02) → plan via gsd-plan-phase |
+| Phase 5 | Plugin Merge + Bug Fixes — 5/5 plans complete, human UAT pending |
+| Phase 6 | Engine Features — 2/2 plans complete（FEAT-01 循环返回 + FEAT-02 共享去重），Godot DM 编译验证 pending |
+| Tests | 311/311 passing |
+| Next | Phase 7: Build + Deployment (ENG-02, ENG-03) |
 
 ## Performance Metrics
 
@@ -58,6 +59,9 @@ See: .planning/PROJECT.md (updated 2026-08-06)
 - Auto-export 2-second debounce with Set-based dedup
 - Reference validator only checks Flow→Dialogue direction
 - Status bar success/failure auto-revert to pending after 5 seconds
+- 2026-08-07 用户决策：D2 Choice 循环 = 画环到 Choice 节点；D3 汇合命名 = 混合（优先已有 Marker）
+- 2026-08-07 UAT 全部通过（A8 迁移验证用户主动跳过）
+- 2026-08-07 Flow 创建重构为 articy 风格：只需名称；Flow 自带同名 Fragment 文件夹；Fragment 必须挂父 Flow 并回写引用节点；canvas-templates 模板模块整体下线（含 12 个 golden 测试）
 
 ### Known Gaps (deferred to v0.2)
 
@@ -89,7 +93,7 @@ Items acknowledged and deferred at milestone close on 2026-08-06. **Phase 5 (202
 | integration | W2 Reverse navigation unwired | ✅ fixed (Phase 5) |
 | verification | All 4 phases lack VERIFICATION.md | deferred to Phase 9 |
 | nyquist | All 4 phases lack VALIDATION.md | deferred to Phase 9 |
-| features | FEAT-01 Choice 循环返回 / FEAT-02 共享去重 | Phase 6 (next) |
+| features | FEAT-01 Choice 循环返回 / FEAT-02 共享去重 | ✅ done (Phase 6, 2026-08-07) — Godot DM 编译验证 pending |
 | engineering | ENG-02 output/ 部署目录 / ENG-03 构建脚本 | Phase 7 |
 | ux | UX-01 浏览按钮 / UX-02 中文化 / UX-03 反馈优化 | Phase 8 |
 | uat | Phase 5 人工 UAT（8 项，见 05-VERIFICATION.md） | pending human verification |

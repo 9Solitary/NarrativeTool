@@ -135,3 +135,70 @@ describe('Export Engine - Robustness', () => {
     }
   });
 });
+
+// -------------------------------------------------------------------------
+// Embedded speaker prefix handling (restored fix — UAT C1 regression)
+// Users write multi-turn dialogue inside one node body as "Speaker: text"
+// lines; the engine must not add a second prefix, must recognize the
+// full-width colon (U+FF1A), must keep per-line indentation inside Choice
+// subtrees, and must not treat unknown "Name:"-shaped text as a speaker.
+// -------------------------------------------------------------------------
+
+describe('Export Engine - Embedded speaker prefixes', () => {
+  const baseProject = (body) => ({
+    project: {
+      characters: [{ id: 'c0', name: '王裕昌' }, { id: 'c1', name: '程靖霖' }],
+      nodes: [
+        { id: 'n0', type: 'Entry', title: 'Start', body: '' },
+        { id: 'n1', type: 'Dialog', title: '掌柜', body, cast: [{ characterId: 'c0', role: 'Speaker' }] }
+      ],
+      links: [{ id: 'l0', from: 'n0', to: 'n1' }]
+    }
+  });
+
+  it('does not duplicate a known speaker prefix already in the body', () => {
+    const output = exportEngine(baseProject('王裕昌: “哦哟。”'), { medEnabled: false });
+    assert.ok(output.includes('王裕昌: “哦哟。”'), 'line kept with single prefix');
+    assert.ok(!output.includes('王裕昌: 王裕昌:'), 'no doubled prefix');
+  });
+
+  it('recognizes full-width colon (U+FF1A) and normalizes to half-width', () => {
+    const output = exportEngine(baseProject('王裕昌：“哦哟。”'), { medEnabled: false });
+    assert.ok(output.includes('王裕昌: “哦哟。”'), 'normalized to half-width colon');
+    assert.ok(!output.includes('王裕昌：'), 'full-width colon not emitted');
+  });
+
+  it('handles multi-line bodies: per-line prefixes, no doubling', () => {
+    const body = '程靖霖: “这怎么说？”\n王裕昌: “西边也不好过。”';
+    const output = exportEngine(baseProject(body), { medEnabled: false });
+    assert.ok(output.includes('程靖霖: “这怎么说？”\n王裕昌: “西边也不好过。”'),
+      'each line keeps its own embedded speaker exactly once');
+  });
+
+  it('does not treat unknown "Name:"-shaped text as a speaker prefix', () => {
+    const output = exportEngine(baseProject('Strength: 5.'), { medEnabled: false });
+    assert.ok(output.includes('王裕昌: Strength: 5.'), 'node speaker still prepended');
+  });
+
+  it('keeps continuation lines indented inside Choice subtrees', () => {
+    const ncanvas = {
+      project: {
+        characters: [{ id: 'c0', name: '王裕昌' }],
+        nodes: [
+          { id: 'n0', type: 'Entry', title: 'Start', body: '' },
+          { id: 'n1', type: 'Choice', title: 'Q', body: '', choices: ['甲'] },
+          { id: 'n2', type: 'Dialog', title: '掌柜',
+            body: '王裕昌: “第一行。”\n王裕昌: “第二行。”',
+            cast: [{ characterId: 'c0', role: 'Speaker' }] }
+        ],
+        links: [
+          { id: 'l0', from: 'n0', to: 'n1' },
+          { id: 'l1', from: 'n1', to: 'n2', choiceIndex: 0 }
+        ]
+      }
+    };
+    const output = exportEngine(ncanvas, { medEnabled: false });
+    assert.ok(output.includes('\t王裕昌: “第一行。”\n\t王裕昌: “第二行。”'),
+      'both lines of a multi-line body are indented inside the option');
+  });
+});

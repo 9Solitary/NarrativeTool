@@ -45,7 +45,13 @@ class StringSuggesterModal extends SuggestModal {
     }
 
     onClose() {
-        if (!this._chosen) this._onChoose(null);
+        // Obsidian version quirk (UAT A4): on some versions the chooser fires
+        // onClose BEFORE onChooseSuggestion when the user picks an item.
+        // Defer the cancel callback so a pending selection wins the race;
+        // a genuine cancel still resolves, just a tick later.
+        setTimeout(() => {
+            if (!this._chosen) this._onChoose(null);
+        }, 100);
     }
 }
 
@@ -84,7 +90,13 @@ class FileSuggesterModal extends SuggestModal {
     }
 
     onClose() {
-        if (!this._chosen) this._onChoose(null);
+        // Obsidian version quirk (UAT A4): on some versions the chooser fires
+        // onClose BEFORE onChooseSuggestion when the user picks an item.
+        // Defer the cancel callback so a pending selection wins the race;
+        // a genuine cancel still resolves, just a tick later.
+        setTimeout(() => {
+            if (!this._chosen) this._onChoose(null);
+        }, 100);
     }
 }
 
@@ -122,7 +134,13 @@ class FolderSuggestModal extends SuggestModal {
     }
 
     onClose() {
-        if (!this._chosen) this._onChoose(null);
+        // Obsidian version quirk (UAT A4): on some versions the chooser fires
+        // onClose BEFORE onChooseSuggestion when the user picks an item.
+        // Defer the cancel callback so a pending selection wins the race;
+        // a genuine cancel still resolves, just a tick later.
+        setTimeout(() => {
+            if (!this._chosen) this._onChoose(null);
+        }, 100);
     }
 }
 

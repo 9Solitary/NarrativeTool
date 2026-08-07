@@ -35,6 +35,61 @@ function indentedLine(depth, text) {
 }
 
 /**
+ * Detect an embedded speaker prefix at the start of a body line.
+ * Recognizes both half-width ':' and full-width '：' (U+FF1A, produced by
+ * Chinese IMEs). The extracted name must be a KNOWN character name (project
+ * characters / cast entries) or the node's own resolved charName — this
+ * guard prevents false positives like "Strength: {res_strength}.".
+ *
+ * @param {string} line - A single body line
+ * @param {Set<string>|null} knownNames - Known character display names
+ * @param {string|null} charName - The node's resolved speaker name
+ * @returns {{name: string, rest: string}|null}
+ */
+function stripSpeakerPrefix(line, knownNames, charName) {
+    if (!line) return null;
+    const m = line.match(/^\s*([^:：\s][^:：]{0,39}?)\s*[:：]\s*(.*)$/);
+    if (!m) return null;
+    const name = m[1];
+    if (charName && name === charName) return { name, rest: m[2] };
+    if (knownNames && knownNames.has(name)) return { name, rest: m[2] };
+    return null;
+}
+
+/**
+ * Emit a dialog body line-by-line at the given indent depth.
+ * Lines that already carry a known speaker prefix are normalized to
+ * "Name: text" (half-width colon) and NOT prefixed again; other lines get
+ * the node's resolved speaker via formatDialogLine. Blank lines stay truly
+ * empty (no stray indent) to preserve byte-level output.
+ *
+ * @param {Array<string>} out - Output line accumulator
+ * @param {number} depth - Indentation depth
+ * @param {string|null} charName - The node's resolved speaker name
+ * @param {string} body - (Variable-resolved) body text, possibly multi-line
+ * @param {Set<string>|null} knownNames - Known character display names
+ */
+function pushDialogLines(out, depth, charName, body, knownNames) {
+    const text = body || '';
+    // Empty body: keep the legacy single "CharName: " line behavior
+    if (text.length === 0) {
+        out.push(indentedLine(depth, formatDialogLine(charName, text)));
+        return;
+    }
+    for (const rawLine of text.split('\n')) {
+        const embedded = stripSpeakerPrefix(rawLine, knownNames, charName);
+        if (embedded) {
+            out.push(indentedLine(depth, embedded.name + ': ' + embedded.rest));
+        } else if (rawLine.trim().length === 0) {
+            // Blank continuation lines stay untouched (no stray indent)
+            out.push(rawLine);
+        } else {
+            out.push(indentedLine(depth, formatDialogLine(charName, rawLine)));
+        }
+    }
+}
+
+/**
  * Format a dialogue line with character prefix or plain body text.
  *
  * @param {string|null} characterName - Character display name, or null for narrator
@@ -176,12 +231,17 @@ function formatDialogNode(node, ctx) {
     const variables = ctx.variablesObj || ctx.variables;
     const resolvedBody = resolveVariables(node.body, variables, ctx.medEnabled);
 
-    lines.push(indentedLine(ctx.depth, formatDialogLine(charName, resolvedBody)));
+    // Users write multi-turn dialogue inside a single node body as
+    // "Speaker: text" lines. Emit per line: lines already carrying a known
+    // speaker prefix are kept (normalized), others get charName prepended.
+    // Per-line emission also keeps continuation lines correctly indented
+    // inside Choice subtrees.
+    pushDialogLines(lines, ctx.depth, charName, resolvedBody, ctx.knownCharacterNames || null);
 
-    // If node has customFields with readout, emit that as additional line
+    // If node has customFields with readout, emit that as additional line(s)
     if (node.customFields && node.customFields.readout) {
         const readoutBody = resolveVariables(node.customFields.readout, variables, ctx.medEnabled);
-        lines.push(indentedLine(ctx.depth, formatDialogLine(charName, readoutBody)));
+        pushDialogLines(lines, ctx.depth, charName, readoutBody, ctx.knownCharacterNames || null);
     }
 
     return lines;
@@ -220,6 +280,13 @@ function formatContentNode(node, ctx) {
 function formatChoiceNode(node, ctx) {
     const lines = [];
 
+    // FEAT-01 (D2): a Choice that is the target of a user-drawn loop gets a
+    // `~ cue` title line BEFORE its body/options, so looping branches can
+    // jump back with `=> cue` and re-enter the whole choice.
+    if (ctx.graph && ctx.graph.loops.has(node.id)) {
+        lines.push(indentedLine(ctx.depth, '~ ' + ctx.graph.loops.get(node.id)));
+    }
+
     // Emit choice body (the question/statement) if present
     if (node.body && node.body.trim().length > 0) {
         const charName = ctx.resolveCharacter
@@ -243,6 +310,17 @@ function formatChoiceNode(node, ctx) {
      * @returns {Array<string>} Collected lines for this subtree
      */
     function walkSubtree(startNodeId, walkDepth, walkVisited) {
+        // FEAT-02: convergence point — jump to the shared section instead of
+        // duplicating the subtree; the shared section is emitted once at the
+        // end of the export. Checked before walkVisited so every incoming
+        // branch still emits its own jump line.
+        if (ctx.graph && ctx.graph.merges.has(startNodeId)) {
+            if (ctx.emittedMerges && !ctx.emittedMerges.includes(startNodeId)) {
+                ctx.emittedMerges.push(startNodeId);
+            }
+            return [indentedLine(walkDepth, '=> ' + ctx.graph.merges.get(startNodeId))];
+        }
+
         if (walkVisited.has(startNodeId)) return [];
         walkVisited.add(startNodeId);
 
@@ -263,6 +341,11 @@ function formatChoiceNode(node, ctx) {
             // For non-Choice nodes, walk their children at the same depth
             const outgoingLinks = ctx.adjacency.get(startNodeId) || [];
             for (const outLink of outgoingLinks) {
+                // FEAT-01: loop back-edge — emit the jump line, do not recurse
+                if (ctx.graph && ctx.graph.loopEdges.has(outLink.id)) {
+                    result.push(indentedLine(walkDepth, '=> ' + ctx.graph.loops.get(outLink.to)));
+                    continue;
+                }
                 const childLines = walkSubtree(outLink.to, walkDepth, walkVisited);
                 result.push(...childLines);
             }
@@ -405,5 +488,6 @@ function formatNode(node, ctx) {
 // -------------------------------------------------------------------------
 
 module.exports = {
-    formatNode
+    formatNode,
+    slugifyCueName
 };

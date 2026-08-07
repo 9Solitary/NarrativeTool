@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "savedAt": "2026-08-07T00:00:00.000Z",
+  "project": {
+    "title": "Choice Merge with Marker",
+    "notes": "FEAT-02 (D3 hybrid): the convergence point is a user-placed Marker; its title names the shared cue.",
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "Entry",
+        "title": "Start",
+        "body": "",
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "n1",
+        "type": "Choice",
+        "title": "Greeting",
+        "body": "客官从哪来？",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "choiceOptions": [
+          { "id": "o1", "label": "从京城来" },
+          { "id": "o2", "label": "从江南来" }
+        ],
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "n2",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "京城可是繁华之地。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 560,
+        "y": 40
+      },
+      {
+        "id": "n3",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "江南好风景啊。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 560,
+        "y": 160
+      },
+      {
+        "id": "n4",
+        "type": "Marker",
+        "title": "Shared Path",
+        "body": "",
+        "x": 800,
+        "y": 100
+      },
+      {
+        "id": "n5",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "远道而来，辛苦了。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 1040,
+        "y": 100
+      }
+    ],
+    "links": [
+      { "id": "l0", "from": "n0", "to": "n1" },
+      { "id": "l1", "from": "n1", "to": "n2", "choiceOptionId": "o1" },
+      { "id": "l2", "from": "n1", "to": "n3", "choiceOptionId": "o2" },
+      { "id": "l3", "from": "n2", "to": "n4" },
+      { "id": "l4", "from": "n3", "to": "n4" },
+      { "id": "l5", "from": "n4", "to": "n5" }
+    ]
+  },
+  "ui": {
+    "activeFileId": "choice-merge-marker"
+  }
+}

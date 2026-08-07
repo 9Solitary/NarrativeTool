@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "savedAt": "2026-08-07T00:00:00.000Z",
+  "project": {
+    "title": "Choice Loop",
+    "notes": "FEAT-01: 4-option Choice; 3 informational options loop back to the Choice, 1 option continues forward.",
+    "nodes": [
+      {
+        "id": "n0",
+        "type": "Entry",
+        "title": "Start",
+        "body": "",
+        "x": 80,
+        "y": 80
+      },
+      {
+        "id": "n1",
+        "type": "Choice",
+        "title": "Shopkeeper Question",
+        "body": "你需要什么？",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "choiceOptions": [
+          { "id": "o1", "label": "问问价格" },
+          { "id": "o2", "label": "问问路线" },
+          { "id": "o3", "label": "聊聊天气" },
+          { "id": "o4", "label": "购买物品" }
+        ],
+        "x": 320,
+        "y": 80
+      },
+      {
+        "id": "n2",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "价格公道，童叟无欺。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 560,
+        "y": 40
+      },
+      {
+        "id": "n3",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "往北走就是官道。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 560,
+        "y": 120
+      },
+      {
+        "id": "n4",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "今天天气不错。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 560,
+        "y": 200
+      },
+      {
+        "id": "n5",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "好嘞，给你拿好。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 560,
+        "y": 280
+      },
+      {
+        "id": "n6",
+        "type": "Dialog",
+        "title": "王裕昌",
+        "body": "欢迎下次再来。",
+        "cast": [{ "role": "Speaker", "name": "王裕昌" }],
+        "x": 800,
+        "y": 280
+      }
+    ],
+    "links": [
+      { "id": "l0", "from": "n0", "to": "n1" },
+      { "id": "l1", "from": "n1", "to": "n2", "choiceOptionId": "o1" },
+      { "id": "l2", "from": "n1", "to": "n3", "choiceOptionId": "o2" },
+      { "id": "l3", "from": "n1", "to": "n4", "choiceOptionId": "o3" },
+      { "id": "l4", "from": "n1", "to": "n5", "choiceOptionId": "o4" },
+      { "id": "l5", "from": "n2", "to": "n1" },
+      { "id": "l6", "from": "n3", "to": "n1" },
+      { "id": "l7", "from": "n4", "to": "n1" },
+      { "id": "l8", "from": "n5", "to": "n6" }
+    ]
+  },
+  "ui": {
+    "activeFileId": "choice-loop"
+  }
+}

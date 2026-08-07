@@ -8,6 +8,7 @@
 
 const { formatNode } = require('./gd-format');
 const { detectMedState, formatMedNode, formatMedHeader, formatMutationsForEffects } = require('./med-format');
+const { analyzeGraph } = require('./graph-analysis');
 
 // -------------------------------------------------------------------------
 // Character name resolution
@@ -203,6 +204,21 @@ function exportEngine(ncanvasJson, config) {
         }
     }
 
+    // Known speaker names (project characters + cast entry names). Dialog
+    // body lines already starting with a known "Name:" / "Name：" prefix are
+    // emitted as-is instead of getting a duplicated prefix.
+    const knownCharacterNames = new Set();
+    for (const c of characters) {
+        if (c && c.name) knownCharacterNames.add(c.name);
+    }
+    for (const n of nodes) {
+        if (Array.isArray(n.cast)) {
+            for (const entry of n.cast) {
+                if (entry && entry.name) knownCharacterNames.add(entry.name);
+            }
+        }
+    }
+
     // Build adjacency list from links
     const adjacency = new Map();
     // Build node map for O(1) lookup
@@ -218,6 +234,19 @@ function exportEngine(ncanvasJson, config) {
     // Find start node: first node with type "Entry", fallback to first node
     const entryNodes = nodes.filter(n => n.type === 'Entry');
     const startNode = entryNodes.length > 0 ? entryNodes[0] : nodes[0];
+
+    // ----- Phase 6 pre-pass: loop + merge graph analysis (FEAT-01 / FEAT-02) -----
+    // Pure analysis over the graph. When no loops or merges are found, the
+    // walk below takes the exact pre-Phase-6 code paths (golden contract:
+    // existing .dialogue output stays byte-identical).
+    const graph = analyzeGraph(nodes, links, startNode.id);
+    if (Array.isArray(cfg.warnings)) {
+        cfg.warnings.push(...graph.warnings);
+    }
+
+    // FEAT-02: ordered record of merge points already jumped to during the
+    // walk; their shared subtrees are emitted once after the main walk.
+    const emittedMerges = [];
 
     // MED auto-detection (from RESEARCH.md Pattern 5)
     let medDetected = false;
@@ -271,18 +300,42 @@ function exportEngine(ncanvasJson, config) {
         },
         resolveCharacter: resolveCharacter,
         resolveVariables: resolveVariables,
+        knownCharacterNames: knownCharacterNames,
         adjacency: adjacency,
         nodeMap: nodeMap,
         links: links,
+        graph: graph,
+        emittedMerges: emittedMerges,
         charactersArr: characters,
         variablesObj: variables,
         walkChildren: function(nodeId, depth) {
-            const children = adjacency.get(nodeId) || [];
-            for (const link of children) {
-                walkNode(link.to, depth);
-            }
+            walkChildLinks(nodeId, depth);
         }
     };
+
+    // ----- Child-link walker with loop-edge handling (FEAT-01) -----
+    // Emits `=> cue` jump lines for user-drawn loop back-edges instead of
+    // recursing into the already-emitted Choice. When graph.loopEdges is
+    // empty this behaves exactly like the pre-Phase-6 inline loops.
+    function walkChildLinks(nodeId, depth) {
+        const children = adjacency.get(nodeId) || [];
+        for (const link of children) {
+            if (graph.loopEdges.has(link.id)) {
+                lines.push('\t'.repeat(depth) + '=> ' + graph.loops.get(link.to));
+                continue;
+            }
+            // FEAT-02: convergence point — jump to the shared section, do not
+            // duplicate the subtree inline.
+            if (graph.merges.has(link.to)) {
+                if (!emittedMerges.includes(link.to)) {
+                    emittedMerges.push(link.to);
+                }
+                lines.push('\t'.repeat(depth) + '=> ' + graph.merges.get(link.to));
+                continue;
+            }
+            walkNode(link.to, depth);
+        }
+    }
 
     // ----- Define walkNode now that ctx is fully formed -----
     walkNode = function(nodeId, depth) {
@@ -309,10 +362,7 @@ function exportEngine(ncanvasJson, config) {
                 const medLines = formatMedNode(node, { ...nodeCtx, depth: 0 });
                 lines.push(...medLines);
             }
-            const children = adjacency.get(nodeId) || [];
-            for (const link of children) {
-                walkNode(link.to, 0);
-            }
+            walkChildLinks(node.id, 0);
         } else if (node.type === 'Marker' || node.type === 'Event') {
             // Marker/Event nodes emit cue + body, then walk children at same depth
             const result = formatNode(node, nodeCtx);
@@ -321,10 +371,7 @@ function exportEngine(ncanvasJson, config) {
                 const medLines = formatMedNode(node, nodeCtx);
                 lines.push(...medLines);
             }
-            const children = adjacency.get(nodeId) || [];
-            for (const link of children) {
-                walkNode(link.to, depth);
-            }
+            walkChildLinks(node.id, depth);
         } else {
             // Dialog and Content nodes: emit their line, then walk children at same depth
             const result = formatNode(node, nodeCtx);
@@ -333,10 +380,7 @@ function exportEngine(ncanvasJson, config) {
                 const medLines = formatMedNode(node, nodeCtx);
                 lines.push(...medLines);
             }
-            const children = adjacency.get(nodeId) || [];
-            for (const link of children) {
-                walkNode(link.to, depth);
-            }
+            walkChildLinks(node.id, depth);
         }
     };
 
@@ -346,6 +390,20 @@ function exportEngine(ncanvasJson, config) {
         lines.push('~ start');
     }
     walkNode(startNode.id, 0);
+
+    // ----- FEAT-02: emit shared merge sections (deduplicated content) -----
+    // Index-based loop: walking a shared section may record further nested
+    // merges, which are appended here and emitted after their parents.
+    for (let i = 0; i < emittedMerges.length; i++) {
+        const mergeNode = nodeMap.get(emittedMerges[i]);
+        if (!mergeNode) continue;
+        // A Marker merge point emits its own `~ cue` header via formatNode;
+        // other node types need the generated section header first.
+        if (mergeNode.type !== 'Marker') {
+            lines.push('~ ' + graph.merges.get(emittedMerges[i]));
+        }
+        walkNode(mergeNode.id, 0);
+    }
 
     return lines.join('\n') + '\n';
 }
