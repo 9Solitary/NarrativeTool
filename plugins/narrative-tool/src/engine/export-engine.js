@@ -15,7 +15,8 @@ const { analyzeGraph } = require('./graph-analysis');
 //
 // Resolution priority (from RESEARCH.md Pattern 4):
 //   1. node.cast[] with role==="Speaker" → use cast entry's `name` field
-//   2. Lookup project.characters[] by characterId from cast entry
+//   2. Lookup characters[] by characterId from cast entry (project.characters
+//      merged with config.externalCharacters; project entries win on collision)
 //   3. Fallback to node.title (Dialog nodes often use title as character name)
 //   4. Return null → narrator line (no Character: prefix)
 // -------------------------------------------------------------------------
@@ -170,7 +171,9 @@ function resolveVariables(text, variables, medEnabled) {
  * Convert a parsed .ncanvas JSON object to a Godot DM .dialogue string.
  *
  * @param {Object} ncanvasJson - Parsed .ncanvas JSON (must have project.nodes)
- * @param {Object} config - { medEnabled: boolean }
+ * @param {Object} config - { medEnabled: boolean, externalCharacters?: Array<{id, name}> }
+ *   externalCharacters: shared vault characters (SHR-01), used only as a
+ *   fallback lookup — project.characters always wins on id collisions.
  * @returns {string} The .dialogue formatted string (trailing newline)
  *
  * Throws if project.nodes is missing.
@@ -196,19 +199,29 @@ function exportEngine(ncanvasJson, config) {
     const characters = ncanvasJson.project.characters || [];
     const variables = ncanvasJson.project.variables || {};
 
+    // SHR-01: shared vault characters injected via config.externalCharacters.
+    // They are a fallback lookup only — external entries are placed first so
+    // project.characters overwrite them on id collisions in the maps below.
+    const externalCharacters = Array.isArray(cfg.externalCharacters)
+        ? cfg.externalCharacters
+        : [];
+    const mergedCharacters = externalCharacters.concat(characters);
+
     // Build character map for lookups
     const characterMap = new Map();
-    for (const c of characters) {
+    for (const c of mergedCharacters) {
         if (c && c.id) {
             characterMap.set(c.id, c);
         }
     }
 
-    // Known speaker names (project characters + cast entry names). Dialog
-    // body lines already starting with a known "Name:" / "Name：" prefix are
-    // emitted as-is instead of getting a duplicated prefix.
+    // Known speaker names (project + external characters + cast entry names).
+    // Dialog body lines already starting with a known "Name:" / "Name：" prefix
+    // are emitted as-is instead of getting a duplicated prefix. External names
+    // must be included here: a shared character missing from this set would
+    // re-introduce the "王裕昌: 王裕昌: ..." double-prefix bug (C1 regression).
     const knownCharacterNames = new Set();
-    for (const c of characters) {
+    for (const c of mergedCharacters) {
         if (c && c.name) knownCharacterNames.add(c.name);
     }
     for (const n of nodes) {
@@ -306,7 +319,7 @@ function exportEngine(ncanvasJson, config) {
         links: links,
         graph: graph,
         emittedMerges: emittedMerges,
-        charactersArr: characters,
+        charactersArr: mergedCharacters,
         variablesObj: variables,
         walkChildren: function(nodeId, depth) {
             walkChildLinks(nodeId, depth);

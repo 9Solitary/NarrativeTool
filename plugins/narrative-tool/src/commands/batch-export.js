@@ -13,6 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { exportEngine } = require('../engine/export-engine');
 const { isAbsoluteExportPath, writeDialogueFile } = require('./paths');
+const { loadSharedCharacters } = require('./shared-characters');
 
 // ---------------------------------------------------------------------------
 // Path normalization helpers
@@ -77,6 +78,10 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
     const total = inScopeFiles.length;
     let processed = 0;
 
+    // SHR-01: load shared vault characters once per batch run; the engine
+    // uses them as a fallback lookup for gc- cast references.
+    const externalCharacters = loadSharedCharacters(app);
+
     for (const file of inScopeFiles) {
         processed++;
         if (typeof onProgress === 'function') {
@@ -98,7 +103,10 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
             }
 
             // 3. Run through export engine
-            const dialogueText = exportEngine(ncanvasJson, { medEnabled: !!medEnabled });
+            const dialogueText = exportEngine(ncanvasJson, {
+                medEnabled: !!medEnabled,
+                externalCharacters: externalCharacters
+            });
 
             // 4. Construct output filename (flat basename layout)
             // outBasename = <basename>.dialogue; duplicate-basename prefix

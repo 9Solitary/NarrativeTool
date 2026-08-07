@@ -12,6 +12,7 @@
 
 const { exportEngine } = require('../engine/export-engine');
 const { writeDialogueFile } = require('./paths');
+const { loadSharedCharacters } = require('./shared-characters');
 const { FileSuggesterModal } = require('../ui/modals');
 const { notify } = require('../ui/notify');
 
@@ -61,10 +62,11 @@ async function doExport(plugin, file) {
             return;
         }
 
-        // 2. Run export engine
+        // 2. Run export engine (SHR-01: inject shared vault characters as fallback lookup)
         const title = ncanvasJson.project?.title || file.basename;
         const dialogueOutput = exportEngine(ncanvasJson, {
-            medEnabled: plugin.settings.medEnabled
+            medEnabled: plugin.settings.medEnabled,
+            externalCharacters: loadSharedCharacters(plugin.app)
         });
 
         // 3. Status bar: exporting

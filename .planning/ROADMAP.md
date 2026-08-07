@@ -2,12 +2,13 @@
 
 **Created:** 2026-07-23
 **Granularity:** Standard
-**Phases:** 9 (4 shipped + 5 planned for v1.0)
+**Phases:** 10 (4 v0.1 + 5 v1.0 + 1 v1.1)
 
 ## Milestones
 
 - ✅ **v0.1 MVP** — Phases 1-4 (shipped 2026-08-06)
 - ✅ **v1.0 正式版** — Phases 5-9 (shipped 2026-08-07)
+- 🚧 **v1.1 NC 协同增强** — Phase 10 (in progress)
 
 ## Phases
 
@@ -21,7 +22,7 @@
 
 </details>
 
-## 🚧 v1.0 正式版 (In Progress)
+## ✅ v1.0 正式版 (Shipped 2026-08-07)
 
 **Milestone Goal:** 修复 v0.1 所有已知差距 + 实现用户反馈的核心功能（Choice 循环、共享去重）+ 工程化打磨（插件合并、一键构建、中文化），交付完整、稳定、可部署的正式版。
 
@@ -110,6 +111,27 @@ Plans:
 Plans:
 - [x] Phase 1-4 各补 VERIFICATION.md（遵循 05 范例结构）+ VALIDATION.md（Nyquist 断言级追溯）；EXP-06 发现为从未实现的真缺口，2026-08-07 用户决策重新界定为"内联 [#...] 透传"并关闭
 
+## 🚧 v1.1 NC 协同增强 (In Progress)
+
+**Milestone Goal:** Narrative Canvas 与 narrative-tool 数据打通——所有 .ncanvas 共享同一张角色表（vault `Characters/*.md` 实体档案），编写对话时人名即刻可用。
+
+- [ ] **Phase 10: Shared Characters** — NC 读取 Characters/*.md 合并进角色表
+
+### Phase 10: Shared Characters
+**Goal**: 打开/新建任意 .ncanvas 时，vault Characters/*.md 中的角色立即可用于 speaker 补全、cast 选择与 Speaker 自动打标，无需逐文件重复添加角色
+**Depends on**: v1.0
+**Requirements**: SHR-01
+**Success Criteria** (what must be TRUE):
+  1. 在 Obsidian 中打开或新建 .ncanvas，角色页和 cast 下拉立即列出 Characters/*.md 中的角色（无需手动添加）
+  2. 共享角色 ID 全局稳定（gc-<frontmatter id>），与文件内角色 ID 不冲突；cast 引用可跨文件工作
+  3. 共享角色在 NC 内只读；编辑 Characters/<id>.md 后（或增删该目录文件），NC 角色表自动刷新
+  4. NC 设置页可配置共享角色目录（默认 Characters），留空则禁用该功能；web 版（无 vault）行为不变
+  5. narrative-tool 导出引擎与全部 310 个测试不受影响；NC 构建产物通过其 artifact 验证
+**Plans**: 1 plan
+
+Plans:
+- [x] 10-01-PLAN.md — vault 扫描器 + getCharacters 合并视图 + 只读 UI + 设置项 + 事件刷新（代码完成，待人工 UAT）
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -121,8 +143,9 @@ Plans:
 | 5. Plugin Merge + Bug Fixes | v1.0 | 5/5 | Complete | 2026-08-06 |
 | 6. Engine Features | v1.0 | 2/2 | Complete | 2026-08-07 |
 | 7. Build + Deployment | v1.0 | 1/1 | Complete | 2026-08-07 |
-| 8. UX | v1.0 | 0/0 | Not started | - |
-| 9. Verification | v1.0 | 0/0 | Not started | - |
+| 8. UX | v1.0 | 1/1 | Complete | 2026-08-07 |
+| 9. Verification | v1.0 | 1/1 | Complete | 2026-08-07 |
+| 10. Shared Characters | v1.1 | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-07-23*

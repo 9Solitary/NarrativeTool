@@ -18,6 +18,7 @@
 
 const { exportEngine } = require('../engine/export-engine');
 const { writeDialogueFile } = require('./paths');
+const { loadSharedCharacters } = require('./shared-characters');
 
 // ---------------------------------------------------------------------------
 // 1. exportSingleFile — single-file .ncanvas → .dialogue export
@@ -52,8 +53,11 @@ async function exportSingleFile(app, file, exportPath, medEnabled) {
             };
         }
 
-        // 3. Run through export engine
-        const dialogueText = exportEngine(ncanvasJson, { medEnabled: !!medEnabled });
+        // 3. Run through export engine (SHR-01: inject shared vault characters)
+        const dialogueText = exportEngine(ncanvasJson, {
+            medEnabled: !!medEnabled,
+            externalCharacters: loadSharedCharacters(app)
+        });
 
         // 4. Write through the shared path module (honors exportPath)
         const result = await writeDialogueFile(
