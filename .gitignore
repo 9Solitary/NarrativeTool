@@ -16,3 +16,6 @@ TestVault/
 
 # Scratch / temporary test files
 tests/temp/
+
+# Deploy artifacts (npm run build)
+output/

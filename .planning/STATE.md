@@ -6,16 +6,16 @@ status: in_progress
 last_updated: 2026-08-07T00:00:00.000Z
 progress:
   total_phases: 5
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 40
+  completed_phases: 3
+  total_plans: 8
+  completed_plans: 8
+  percent: 60
 ---
 
 # Project State: Obsidian Narrative Toolchain
 
 **Last Updated:** 2026-08-07
-**Milestone:** v1.0 — IN PROGRESS (Phase 6 complete)
+**Milestone:** v1.0 — IN PROGRESS (Phase 7 complete)
 
 ## Project Reference
 
@@ -23,18 +23,19 @@ See: .planning/PROJECT.md (updated 2026-08-06)
 
 **Core Value:** 策划在 Obsidian 中完成 Flow → Dialogue 的全链路编辑，并一键导出为 Godot 可读取的 `.dialogue` 文件。
 
-**Current Focus:** Phase 7 Build + Deployment — npm run build 一键构建 + output/ 部署目录
+**Current Focus:** Phase 8 UX — 全面中文化 + Export Path 浏览按钮 + 导出状态反馈
 
 ## Current Position
 
 | Attribute | Value |
 |-----------|-------|
-| Milestone | v1.0 正式版 — IN PROGRESS（Phase 6/9 completed, Phase 7-9 pending） |
+| Milestone | v1.0 正式版 — IN PROGRESS（Phase 7/9 completed, Phase 8-9 pending） |
 | v0.1 MVP | SHIPPED 2026-08-06（Phase 1-4, 12 plans） |
-| Phase 5 | Plugin Merge + Bug Fixes — 5/5 plans complete, human UAT pending |
-| Phase 6 | Engine Features — 2/2 plans complete（FEAT-01 循环返回 + FEAT-02 共享去重），Godot DM 编译验证 pending |
-| Tests | 311/311 passing |
-| Next | Phase 7: Build + Deployment (ENG-02, ENG-03) |
+| Phase 5 | Plugin Merge + Bug Fixes — 5/5 plans complete, UAT passed 2026-08-07 |
+| Phase 6 | Engine Features — 2/2 plans complete, UAT passed 2026-08-07 |
+| Phase 7 | Build + Deployment — 1/1 plan complete（npm run build → output/narrative-tool/） |
+| Tests | 310/310 passing |
+| Next | Phase 8: UX (UX-01 浏览按钮 / UX-02 中文化 / UX-03 反馈优化) |
 
 ## Performance Metrics
 

@@ -1,0 +1,10 @@
+{
+    "name": "obsidian-narrative-toolchain",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Obsidian narrative toolchain: Flow → Dialogue editing and Godot Dialogue Manager export",
+    "scripts": {
+        "build": "node scripts/build.mjs",
+        "test": "node --test \"tests/*.test.js\""
+    }
+}

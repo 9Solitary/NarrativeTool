@@ -235,15 +235,17 @@ Character: 这是角色的对话行。
 ## 开发
 
 ```bash
-# 运行全部测试（node:test）
-node --test tests/*.test.js
+# 根目录一键构建：esbuild 编译 + 部署产物到 output/narrative-tool/
+# （首次需先 npm --prefix plugins/narrative-tool install）
+npm run build
 
-# 构建插件（需先在 plugins/narrative-tool/ 下 npm install）
-cd plugins/narrative-tool && node esbuild.config.mjs
+# 运行全部测试（node:test）
+npm test
 ```
 
+- **部署**：构建后复制 `output/narrative-tool/`（main.js + manifest.json + styles.css）到任意 vault 的 `.obsidian/plugins/` 即可
 - **导出引擎**（`plugins/narrative-tool/src/engine/`）是纯数据转换，零 Obsidian 依赖，可脱离 Obsidian 用 `node --test` 直接测试
-- 9 个 golden 导出文件作为回归契约，保证导出格式字节一致
+- golden 导出文件作为回归契约，保证导出格式字节一致
 - 项目管理文档见 `.planning/`（ROADMAP / STATE / REQUIREMENTS），交接说明见 `HANDOVER.md`
 
 ---

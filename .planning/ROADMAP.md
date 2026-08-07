@@ -26,8 +26,8 @@
 **Milestone Goal:** 修复 v0.1 所有已知差距 + 实现用户反馈的核心功能（Choice 循环、共享去重）+ 工程化打磨（插件合并、一键构建、中文化），交付完整、稳定、可部署的正式版。
 
 - [x] **Phase 5: Plugin Merge + Bug Fixes** — 三插件合并为 narrative-tool，v0.1 的 7 项已知缺陷全部修复 (completed 2026-08-06)
-- [x] **Phase 6: Engine Features** — Choice 循环返回 + 共享内容去重，导出引擎两遍式改造 (completed 2026-08-07, 待 Godot DM 人工编译验证)
-- [ ] **Phase 7: Build + Deployment** — npm run build 一键构建，output/ 部署产物目录
+- [x] **Phase 6: Engine Features** — Choice 循环返回 + 共享内容去重，导出引擎两遍式改造 (completed 2026-08-07, UAT 通过)
+- [x] **Phase 7: Build + Deployment** — 根目录 npm run build 一键构建，output/narrative-tool/ 部署产物 (completed 2026-08-07)
 - [ ] **Phase 8: UX** — 全面中文化、Export Path 浏览按钮、导出状态反馈优化
 - [ ] **Phase 9: Verification** — Phase 1-4 全部补 VERIFICATION.md + Nyquist 验证
 
@@ -78,7 +78,10 @@ Plans:
   2. After build, `output/narrative-tool/` contains `main.js` + `manifest.json` + `styles.css`, ready to copy into any Obsidian vault
   3. User copies the output directory into a fresh vault, enables the plugin, and all commands and settings work without errors
   4. Test suite (203+ tests) still passes after the build pipeline change
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [x] 07-01-PLAN.md — 根 package.json + scripts/build.mjs（esbuild 单步 + 产物落 output/），npm test 脚本
 
 ### Phase 8: UX
 **Goal**: 全中文界面 + 顺手的导出路径选择 + 清晰的导出反馈
@@ -112,7 +115,7 @@ Plans:
 | 4. Narrative Project | v0.1 | 3/3 | Complete | 2026-07-24 |
 | 5. Plugin Merge + Bug Fixes | v1.0 | 5/5 | Complete | 2026-08-06 |
 | 6. Engine Features | v1.0 | 2/2 | Complete | 2026-08-07 |
-| 7. Build + Deployment | v1.0 | 0/0 | Not started | - |
+| 7. Build + Deployment | v1.0 | 1/1 | Complete | 2026-08-07 |
 | 8. UX | v1.0 | 0/0 | Not started | - |
 | 9. Verification | v1.0 | 0/0 | Not started | - |
 
