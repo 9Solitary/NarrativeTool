@@ -9,3 +9,10 @@ plugins/*/node_modules/
 
 # Obsidian plugin local data
 data.json
+
+# Third-party / local-only assets (not part of this repo)
+NarrativeCanvas/
+TestVault/
+
+# Scratch / temporary test files
+tests/temp/
