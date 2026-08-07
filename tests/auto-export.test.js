@@ -266,7 +266,7 @@ describe('setupAutoExport', () => {
     });
 
     // -----------------------------------------------------------------------
-    // Test 5: 500ms debounce batches multiple changes into single export batch
+    // Test 5: 2000ms debounce batches multiple changes into single export batch
     // -----------------------------------------------------------------------
 
     it('batches multiple .ncanvas changes within debounce window', async () => {

@@ -7,7 +7,7 @@
 ## Milestones
 
 - ✅ **v0.1 MVP** — Phases 1-4 (shipped 2026-08-06)
-- 🚧 **v1.0 正式版** — Phases 5-9 (in progress)
+- ✅ **v1.0 正式版** — Phases 5-9 (shipped 2026-08-07)
 
 ## Phases
 
@@ -28,8 +28,8 @@
 - [x] **Phase 5: Plugin Merge + Bug Fixes** — 三插件合并为 narrative-tool，v0.1 的 7 项已知缺陷全部修复 (completed 2026-08-06)
 - [x] **Phase 6: Engine Features** — Choice 循环返回 + 共享内容去重，导出引擎两遍式改造 (completed 2026-08-07, UAT 通过)
 - [x] **Phase 7: Build + Deployment** — 根目录 npm run build 一键构建，output/narrative-tool/ 部署产物 (completed 2026-08-07)
-- [ ] **Phase 8: UX** — 全面中文化、Export Path 浏览按钮、导出状态反馈优化（代码完成，待人工 UAT）
-- [ ] **Phase 9: Verification** — Phase 1-4 全部补 VERIFICATION.md + Nyquist 验证
+- [x] **Phase 8: UX** — 全面中文化、Export Path 浏览按钮、导出状态反馈优化 (completed 2026-08-07, UAT 通过)
+- [x] **Phase 9: Verification** — Phase 1-4 全部补 VERIFICATION.md + Nyquist 验证 (completed 2026-08-07)
 
 ## Phase Details
 
@@ -105,7 +105,10 @@ Plans:
   1. Each of the 4 v0.1 phases has a VERIFICATION.md documenting which success criteria were verified and how
   2. Each of the 4 v0.1 phases has a Nyquist VALIDATION.md with test evidence covering every behavior claim
   3. A reviewer can trace every v0.1 success criterion to a concrete test or artifact without reading implementation code
-**Plans**: TBD
+**Plans**: 1 plan（无独立 PLAN 文件，直接执行）
+
+Plans:
+- [x] Phase 1-4 各补 VERIFICATION.md（遵循 05 范例结构）+ VALIDATION.md（Nyquist 断言级追溯）；EXP-06 发现为从未实现的真缺口，2026-08-07 用户决策重新界定为"内联 [#...] 透传"并关闭
 
 ## Progress
 
