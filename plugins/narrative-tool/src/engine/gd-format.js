@@ -90,6 +90,25 @@ function pushDialogLines(out, depth, charName, body, knownNames) {
 }
 
 /**
+ * Emit a structural node's description body as Godot DM comment lines.
+ * Entry/Marker/Event bodies (and Choice bodies without a speaker) are block
+ * descriptions for the author, not game text — they must not land in the
+ * exported dialogue as playable lines. Each non-blank line becomes a
+ * `# comment` line at the given indent; blank lines are dropped.
+ *
+ * @param {Array<string>} out - Output line accumulator
+ * @param {number} depth - Indentation depth
+ * @param {string} body - (Variable-resolved) description text, possibly multi-line
+ */
+function pushCommentLines(out, depth, body) {
+    const text = body || '';
+    for (const rawLine of text.split('\n')) {
+        if (rawLine.trim().length === 0) continue;
+        out.push(indentedLine(depth, '# ' + rawLine));
+    }
+}
+
+/**
  * Format a dialogue line with character prefix or plain body text.
  *
  * @param {string|null} characterName - Character display name, or null for narrator
@@ -187,9 +206,10 @@ function resolveVariables(text, variables, medEnabled) {
 
 /**
  * Format an Entry node.
- * Emits "~ start" cue line. If node has body content, emits it as well.
+ * Emits "~ start" cue line. If node has body content, emits it as comment lines.
  *
- * Entry body is treated as a narrator/dialogue line after the cue.
+ * Entry body is the block's description for the author, not playable text —
+ * it is exported as `# comment` lines after the cue.
  *
  * @param {Object} node - The Entry node
  * @param {Object} ctx - Context object with depth, characters, variables, etc.
@@ -199,11 +219,11 @@ function formatEntryNode(node, ctx) {
     const lines = [];
     lines.push(indentedLine(ctx.depth, '~ start'));
 
-    // If Entry has body text, emit it as plain narrator text (no character prefix)
-    // Entry nodes are structural — body content is narration, not character dialogue
+    // Entry nodes are structural — body content is a block description,
+    // exported as comment lines, never as narration.
     if (node.body && node.body.trim().length > 0) {
         const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
-        lines.push(indentedLine(ctx.depth, resolvedBody));
+        pushCommentLines(lines, ctx.depth, resolvedBody);
     }
 
     return lines;
@@ -266,9 +286,11 @@ function formatContentNode(node, ctx) {
 
 /**
  * Format a Choice node.
- * Emits body text (if present) using character resolution, then emits each
- * choice option as "- option_label". For each option, follows the corresponding
- * link to emit child content at depth+1.
+ * Emits body text (if present): as a prompt line when the node has a cast
+ * character, otherwise as comment lines (lines carrying a known speaker
+ * prefix stay as dialogue). Then emits each choice option as
+ * "- option_label". For each option, follows the corresponding link to emit
+ * child content at depth+1.
  *
  * Supports both simple `choices[]` (string array) and rich `choiceOptions[]`
  * (objects with `label`, `requires`, `effects`).
@@ -287,13 +309,32 @@ function formatChoiceNode(node, ctx) {
         lines.push(indentedLine(ctx.depth, '~ ' + ctx.graph.loops.get(node.id)));
     }
 
-    // Emit choice body (the question/statement) if present
+    // Emit choice body (the question/statement) if present.
+    // A Choice with a bound cast character speaks its body as a prompt line.
+    // Without cast, the body is a block description: lines carrying a known
+    // "Name: text" speaker prefix stay as dialogue, everything else is
+    // exported as `# comment` lines so descriptions never become game text.
     if (node.body && node.body.trim().length > 0) {
-        const charName = ctx.resolveCharacter
-            ? ctx.resolveCharacter(node, ctx.charactersArr)
-            : null;
         const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
-        lines.push(indentedLine(ctx.depth, formatDialogLine(charName, resolvedBody)));
+        const hasCast = Array.isArray(node.cast) && node.cast.length > 0;
+        if (hasCast) {
+            const charName = ctx.resolveCharacter
+                ? ctx.resolveCharacter(node, ctx.charactersArr)
+                : null;
+            lines.push(indentedLine(ctx.depth, formatDialogLine(charName, resolvedBody)));
+        } else {
+            const knownNames = ctx.knownCharacterNames || null;
+            for (const rawLine of resolvedBody.split('\n')) {
+                const embedded = stripSpeakerPrefix(rawLine, knownNames, null);
+                if (embedded) {
+                    lines.push(indentedLine(ctx.depth, embedded.name + ': ' + embedded.rest));
+                } else if (rawLine.trim().length === 0) {
+                    continue;
+                } else {
+                    lines.push(indentedLine(ctx.depth, '# ' + rawLine));
+                }
+            }
+        }
     }
 
     // Determine choice list: use choiceOptions[] if present (rich format), fallback to choices[]
@@ -412,7 +453,8 @@ function formatChoiceNode(node, ctx) {
 
 /**
  * Format a Marker node.
- * Emits "~ cue_name" with slugified name. If node has body, emits as dialogue line.
+ * Emits "~ cue_name" with slugified name. If node has body, emits it as
+ * comment lines — Marker bodies are planning notes, not playable text.
  *
  * @param {Object} node - The Marker node
  * @param {Object} ctx - Context object
@@ -423,10 +465,10 @@ function formatMarkerNode(node, ctx) {
     const cueName = slugifyCueName(node.title, node.id);
     lines.push(indentedLine(ctx.depth, '~ ' + cueName));
 
-    // If Marker has body text, emit it as plain narrator text
+    // Marker body is a block description — export as comment lines
     if (node.body && node.body.trim().length > 0) {
         const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
-        lines.push(indentedLine(ctx.depth, resolvedBody));
+        pushCommentLines(lines, ctx.depth, resolvedBody);
     }
 
     return lines;
@@ -434,7 +476,8 @@ function formatMarkerNode(node, ctx) {
 
 /**
  * Format an Event node.
- * Same as MarkerNode — emits "~ event_name" cue.
+ * Same as MarkerNode — emits "~ event_name" cue; body is a block description
+ * exported as comment lines.
  * Event nodes may have additional effects handled by MED in Plan 02-02.
  *
  * @param {Object} node - The Event node
@@ -448,7 +491,7 @@ function formatEventNode(node, ctx) {
 
     if (node.body && node.body.trim().length > 0) {
         const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
-        lines.push(indentedLine(ctx.depth, resolvedBody));
+        pushCommentLines(lines, ctx.depth, resolvedBody);
     }
 
     return lines;
