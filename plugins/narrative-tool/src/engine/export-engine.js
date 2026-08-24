@@ -7,7 +7,7 @@
 // and Pattern 4 (Character Name Resolution).
 
 const { formatNode } = require('./gd-format');
-const { detectMedState, formatMedNode, formatMedHeader, formatMutationsForEffects } = require('./med-format');
+const { detectMedState, formatMedNode, formatMedHeader, formatMutationsForEffects, formatLinkConditionalBlocks } = require('./med-format');
 const { analyzeGraph } = require('./graph-analysis');
 
 // -------------------------------------------------------------------------
@@ -17,7 +17,8 @@ const { analyzeGraph } = require('./graph-analysis');
 //   1. node.cast[] with role==="Speaker" → use cast entry's `name` field
 //   2. Lookup characters[] by characterId from cast entry (project.characters
 //      merged with config.externalCharacters; project entries win on collision)
-//   3. Fallback to node.title (Dialog nodes often use title as character name)
+//   3. Fallback to node.title (Dialog nodes often use title as character name),
+//      skipping the untouched type-default title ("Dialog"/"对话" → speakerless)
 //   4. Return null → narrator line (no Character: prefix)
 // -------------------------------------------------------------------------
 
@@ -54,9 +55,16 @@ function resolveCharacter(node, characters) {
         }
     }
 
-    // Priority 3: Fallback to node.title (for Dialog nodes without cast)
-    if (node.title && node.title.trim().length > 0) {
-        return node.title.trim();
+    // Priority 3: Fallback to node.title (for Dialog nodes without cast) —
+    // but skip the untouched type-default title ("Dialog", or its localized
+    // form "对话"). A default title marks a speakerless node, not a character
+    // literally named "Dialog": treating it as the speaker prepends a bogus
+    // "Dialog: " prefix to every body line whose embedded speaker is a temp
+    // character absent from the roster (stripSpeakerPrefix only recognizes
+    // known names).
+    const title = node.title && node.title.trim().length > 0 ? node.title.trim() : null;
+    if (title && title.toLowerCase() !== 'dialog' && title !== '对话') {
+        return title;
     }
 
     // Priority 4: Narrator line
@@ -332,22 +340,43 @@ function exportEngine(ncanvasJson, config) {
     // empty this behaves exactly like the pre-Phase-6 inline loops.
     function walkChildLinks(nodeId, depth) {
         const children = adjacency.get(nodeId) || [];
-        for (const link of children) {
-            if (graph.loopEdges.has(link.id)) {
-                lines.push('\t'.repeat(depth) + '=> ' + graph.loops.get(link.to));
-                continue;
+        // MED-08 (links): when MED is enabled and any outgoing link carries
+        // requirements, wrap the branches in [if]/[else]/[/if] blocks. The
+        // capture callback splices out the lines walkSingleLink just pushed
+        // so the block keywords can bracket them (walkNode pushes into the
+        // shared `lines` array; everything here runs synchronously).
+        if (ctx.medEnabled) {
+            const blockLines = formatLinkConditionalBlocks(children, depth,
+                (link, d) => {
+                    const start = lines.length;
+                    walkSingleLink(link, d);
+                    return lines.splice(start, lines.length - start);
+                });
+            if (blockLines) {
+                lines.push(...blockLines);
+                return;
             }
-            // FEAT-02: convergence point — jump to the shared section, do not
-            // duplicate the subtree inline.
-            if (graph.merges.has(link.to)) {
-                if (!emittedMerges.includes(link.to)) {
-                    emittedMerges.push(link.to);
-                }
-                lines.push('\t'.repeat(depth) + '=> ' + graph.merges.get(link.to));
-                continue;
-            }
-            walkNode(link.to, depth);
         }
+        for (const link of children) {
+            walkSingleLink(link, depth);
+        }
+    }
+
+    function walkSingleLink(link, depth) {
+        if (graph.loopEdges.has(link.id)) {
+            lines.push('\t'.repeat(depth) + '=> ' + graph.loops.get(link.to));
+            return;
+        }
+        // FEAT-02: convergence point — jump to the shared section, do not
+        // duplicate the subtree inline.
+        if (graph.merges.has(link.to)) {
+            if (!emittedMerges.includes(link.to)) {
+                emittedMerges.push(link.to);
+            }
+            lines.push('\t'.repeat(depth) + '=> ' + graph.merges.get(link.to));
+            return;
+        }
+        walkNode(link.to, depth);
     }
 
     // ----- Define walkNode now that ctx is fully formed -----

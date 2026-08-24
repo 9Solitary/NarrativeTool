@@ -7,6 +7,7 @@
 // As specified in 02-01-PLAN.md and RESEARCH.md Pattern 2 (Format Function Dispatch).
 
 const { TOKENS } = require('./gd-constants');
+const { formatLinkConditionalBlocks } = require('./med-format');
 
 // -------------------------------------------------------------------------
 // Utility helpers
@@ -272,6 +273,12 @@ function formatDialogNode(node, ctx) {
  * Emits body text only (narrator, no character prefix).
  * Resolves {variables} in body.
  *
+ * Multi-line bodies are emitted per line, each non-blank line indented
+ * (blank lines stay truly empty) — mirroring pushDialogLines. Indenting only
+ * the first line would drop continuation lines to column 0, breaking Godot
+ * DM nesting inside Choice subtrees ("Nested dialogue lines may only
+ * contain dialogue").
+ *
  * @param {Object} node - The Content node
  * @param {Object} ctx - Context object
  * @returns {Array<string>} Output lines
@@ -281,7 +288,11 @@ function formatContentNode(node, ctx) {
         return [];
     }
     const resolvedBody = resolveVariables(node.body, ctx.variablesObj || ctx.variables, ctx.medEnabled);
-    return [indentedLine(ctx.depth, resolvedBody)];
+    const lines = [];
+    for (const rawLine of resolvedBody.split('\n')) {
+        lines.push(rawLine.trim().length === 0 ? rawLine : indentedLine(ctx.depth, rawLine));
+    }
+    return lines;
 }
 
 /**
@@ -290,7 +301,10 @@ function formatContentNode(node, ctx) {
  * character, otherwise as comment lines (lines carrying a known speaker
  * prefix stay as dialogue). Then emits each choice option as
  * "- option_label". For each option, follows the corresponding link to emit
- * child content at depth+1.
+ * child content at depth+1 — except when the Choice has exactly ONE option:
+ * a single-option Choice is a gate, not a branch, so its continuation stays
+ * at the Choice's own depth and following text resets to the surrounding
+ * indentation.
  *
  * Supports both simple `choices[]` (string array) and rich `choiceOptions[]`
  * (objects with `label`, `requires`, `effects`).
@@ -341,6 +355,15 @@ function formatChoiceNode(node, ctx) {
     const choiceOptions = node.choiceOptions || [];
     const simpleChoices = node.choices || [];
 
+    // A Choice with exactly one option is a gate, not a branch: the
+    // continuation after it resets to the choice's own depth instead of
+    // nesting one level deeper, so text following the choice keeps the
+    // surrounding indentation (Godot DM reports "Nested dialogue lines may
+    // only contain dialogue" when a broken/deeper nested block follows
+    // non-nested text).
+    const optionCount = choiceOptions.length > 0 ? choiceOptions.length : simpleChoices.length;
+    const childDepth = optionCount === 1 ? ctx.depth : ctx.depth + 1;
+
     /**
      * Walk the subtree rooted at a node, collecting formatted lines recursively.
      * Handles both Choice and non-Choice nodes at any depth.
@@ -381,14 +404,25 @@ function formatChoiceNode(node, ctx) {
         } else {
             // For non-Choice nodes, walk their children at the same depth
             const outgoingLinks = ctx.adjacency.get(startNodeId) || [];
-            for (const outLink of outgoingLinks) {
+            const walkOutLink = (outLink, d) => {
                 // FEAT-01: loop back-edge — emit the jump line, do not recurse
                 if (ctx.graph && ctx.graph.loopEdges.has(outLink.id)) {
-                    result.push(indentedLine(walkDepth, '=> ' + ctx.graph.loops.get(outLink.to)));
-                    continue;
+                    return [indentedLine(d, '=> ' + ctx.graph.loops.get(outLink.to))];
                 }
-                const childLines = walkSubtree(outLink.to, walkDepth, walkVisited);
-                result.push(...childLines);
+                return walkSubtree(outLink.to, d, walkVisited);
+            };
+            // MED-08 (links): when MED is enabled and any outgoing link
+            // carries requirements, wrap the branches in [if]/[else]/[/if]
+            // blocks; block keywords at this depth, content one level deeper.
+            const blockLines = ctx.medEnabled
+                ? formatLinkConditionalBlocks(outgoingLinks, walkDepth, walkOutLink)
+                : null;
+            if (blockLines) {
+                result.push(...blockLines);
+            } else {
+                for (const outLink of outgoingLinks) {
+                    result.push(...walkOutLink(outLink, walkDepth));
+                }
             }
         }
 
@@ -418,13 +452,13 @@ function formatChoiceNode(node, ctx) {
             );
             if (targetLink && targetLink.to) {
                 const subVisited = new Set();
-                const subtreeLines = walkSubtree(targetLink.to, ctx.depth + 1, subVisited);
+                const subtreeLines = walkSubtree(targetLink.to, childDepth, subVisited);
                 lines.push(...subtreeLines);
 
                 // Emit MED mutations inline under the target content (MED-02, MED-03)
                 // Mutations come from choice option effects, not the target node itself.
                 if (ctx.formatMutationLines && Array.isArray(opt.effects) && opt.effects.length > 0) {
-                    const mutLines = ctx.formatMutationLines(opt.effects, ctx.depth + 1);
+                    const mutLines = ctx.formatMutationLines(opt.effects, childDepth);
                     lines.push(...mutLines);
                 }
             }
@@ -442,7 +476,7 @@ function formatChoiceNode(node, ctx) {
             );
             if (targetLink && targetLink.to) {
                 const subVisited = new Set();
-                const subtreeLines = walkSubtree(targetLink.to, ctx.depth + 1, subVisited);
+                const subtreeLines = walkSubtree(targetLink.to, childDepth, subVisited);
                 lines.push(...subtreeLines);
             }
         }

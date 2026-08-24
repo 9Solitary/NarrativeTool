@@ -80,6 +80,7 @@ function formatMedHeader(ncanvas) {
  * - project.script.actions[] has any action with op matching set_flag, add_res, subtract
  * - Any node has choiceOptions[].requires that is a truthy non-empty string
  * - Any node has choiceOptions[].effects[] with op matching set_flag, add_res, subtract
+ * - Any link in project.links[] has a non-empty requirements string
  *
  * @param {Object} ncanvas - Parsed .ncanvas JSON
  * @returns {boolean} Whether MED state system is in use
@@ -102,6 +103,15 @@ function detectMedState(ncanvas) {
             a => a && a.op && KNOWN_MUTATION_OPS.has(a.op)
         );
         if (hasMedAction) return true;
+    }
+
+    // Check project.links[] for conditional requirements (link-level branches)
+    if (Array.isArray(project.links)) {
+        if (project.links.some(
+            l => l && typeof l.requirements === 'string' && l.requirements.trim().length > 0
+        )) {
+            return true;
+        }
     }
 
     // Check all nodes for MED constructs
@@ -375,6 +385,61 @@ function emitConditionalBlocks(node, depth) {
 }
 
 // -------------------------------------------------------------------------
+// Link Conditional Branching — [if]/[else]/[/if] blocks for link.requirements
+// -------------------------------------------------------------------------
+
+/**
+ * Wrap the conditional outgoing links of a non-Choice node in MED
+ * [if]/[else]/[/if] blocks. Follows the emitConditionalBlocks conventions:
+ * block keywords sit at the current depth, branch content one level deeper,
+ * condition strings passed through verbatim (T-02-06).
+ *
+ * Semantics:
+ *   - The first link with non-empty requirements opens `[if <requirements>]`.
+ *   - gd-constants has no elif token, so each further conditional link is
+ *     expressed as `[else]` + a nested `[if]` block one level deeper.
+ *   - Links with empty requirements form the trailing `[else]` branch.
+ *   - Returns null when no link carries requirements, so callers fall back
+ *     to the plain walk and output stays byte-identical without conditions.
+ *
+ * @param {Array<Object>} links - Outgoing links of the node, in order
+ * @param {number} depth - Indentation depth for the block keywords
+ * @param {function(Object, number): Array<string>} walkLink - Renders one
+ *   link's subtree (or loop/merge jump line) at the given depth
+ * @returns {Array<string>|null} Block lines, or null when nothing to wrap
+ */
+function formatLinkConditionalBlocks(links, depth, walkLink) {
+    const hasRequirements = (l) => l && typeof l.requirements === 'string'
+        && l.requirements.trim().length > 0;
+    if (!links.some(hasRequirements)) return null;
+
+    const condLinks = links.filter(hasRequirements);
+    const elseLinks = links.filter((l) => !hasRequirements(l));
+    const lines = [];
+
+    function emitGroup(cond, els, d) {
+        const prefix = indent(d);
+        lines.push(prefix + TOKENS.IF_BLOCK_OPEN + cond[0].requirements + ']');
+        lines.push(...walkLink(cond[0], d + 1));
+        const rest = cond.slice(1);
+        if (rest.length > 0) {
+            // No elif token exists: nest a deeper [if] under [else]
+            lines.push(prefix + TOKENS.ELSE_BLOCK);
+            emitGroup(rest, els, d + 1);
+        } else if (els.length > 0) {
+            lines.push(prefix + TOKENS.ELSE_BLOCK);
+            for (const l of els) {
+                lines.push(...walkLink(l, d + 1));
+            }
+        }
+        lines.push(prefix + TOKENS.IF_BLOCK_CLOSE);
+    }
+
+    emitGroup(condLinks, elseLinks, depth);
+    return lines;
+}
+
+// -------------------------------------------------------------------------
 // Exports
 // -------------------------------------------------------------------------
 
@@ -382,5 +447,6 @@ module.exports = {
     detectMedState,
     formatMedHeader,
     formatMedNode,
-    formatMutationsForEffects
+    formatMutationsForEffects,
+    formatLinkConditionalBlocks
 };
