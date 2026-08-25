@@ -15,6 +15,10 @@
 //   BUG-06  styles.css injected at runtime (id narrative-tool-styles) + entity .md annotation
 //   BUG-07  file menu on .canvas files offers all 4 entity node types incl. Add quest node
 //   D-14  Every user-facing message goes through notify() (Chinese-ready wrapper)
+//   (2026-08-10) .canvas file-menu "Add dialogue node" replaced by
+//   "新建对话节点": creates a new blank .ncanvas (NarrativeCanvas
+//   saved-state v1) in the canvas's collection folder and links it in,
+//   instead of picking an existing .ncanvas
 
 const { Plugin, TFile, normalizePath } = require('obsidian');
 const { DEFAULT_SETTINGS, NarrativeToolSettingTab } = require('./ui/settings');
@@ -43,6 +47,37 @@ function slugify(name) {
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '')
         || 'untitled';
+}
+
+// Blank .ncanvas saved-state template — mirrors NarrativeCanvas's own
+// createBlankSavedState (SAVED_STATE_VERSION 1): a single Entry start node.
+function createBlankNcanvas(title) {
+    const projectTitle = String(title || '').trim() || 'Untitled';
+    return {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        project: {
+            title: projectTitle,
+            notes: '',
+            variables: {},
+            characters: [],
+            nodes: [
+                { id: 'n0', type: 'Entry', title: 'Start', body: 'Adventure Begins', x: 120, y: 120 }
+            ],
+            links: []
+        },
+        ui: {
+            selectedNodeId: 'n0',
+            selectedLinkId: null,
+            panel: 'project',
+            activeFileId: 'adventure',
+            view: { x: 0, y: 0, scale: 0.5 },
+            search: '',
+            characterSearch: '',
+            eventSearch: '',
+            playbookJsonOpen: false
+        }
+    };
 }
 
 // Canvas color palette for entity file nodes (Obsidian Canvas colors 1-8).
@@ -542,10 +577,10 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             this.app.workspace.on('file-menu', (menu, file) => {
                 // --- .canvas files: node-adding menu (BUG-07) + open linked dialogue ---
                 if (file instanceof TFile && file.extension === 'canvas') {
-                    // Menu Item 1: Add dialogue node
+                    // Menu Item 1: Create dialogue node (new .ncanvas + node)
                     menu.addItem((item) => {
                         item
-                            .setTitle('添加对话节点')
+                            .setTitle('新建对话节点')
                             .setIcon('message-square')
                             .onClick(async () => {
                                 await this._createDialogueNodeOnCanvas(file);
@@ -646,35 +681,51 @@ module.exports = class NarrativeToolPlugin extends Plugin {
     // ================================================================
 
     async _createDialogueNodeOnCanvas(canvasFile) {
-        // Pick a .ncanvas file to add as a file node on the canvas
-        const ncanvasFiles = this.app.vault.getFiles()
-            .filter(f => f.extension === 'ncanvas');
-        if (ncanvasFiles.length === 0) {
-            notify('库中没有 .ncanvas 文件');
+        // Step 1: The name is all we ask for
+        const name = await promptForInput(this.app, '新建对话', '例如 与掌柜交谈');
+        if (!name || !name.trim()) {
+            notify('已取消新建对话（未输入名称）');
             return;
         }
 
-        const chosen = await new Promise((resolve) => {
-            new FileSuggesterModal(this.app, ncanvasFiles, (f) => resolve(f)).open();
-        });
-        if (!chosen) return;
+        // Step 2: Target folder — when the canvas has a collection folder
+        // (<canvas dir>/<canvas basename>, created alongside a Flow), the
+        // dialogue lives inside it; otherwise it sits next to the canvas.
+        const canvasDir = canvasFile.parent && canvasFile.parent.path !== '/' ? canvasFile.parent.path : '';
+        const collectionFolder = normalizePath((canvasDir ? canvasDir + '/' : '') + canvasFile.basename);
+        const targetFolder = this.app.vault.getAbstractFileByPath(collectionFolder)
+            ? collectionFolder
+            : canvasDir;
 
-        // Read canvas JSON
+        // Step 3: Paths (T-05-10: path traversal mitigation)
+        const safeName = slugify(name.trim()).replace(/\.\./g, '').replace(/[\/\\]/g, '-');
+        const filePath = normalizePath((targetFolder ? targetFolder + '/' : '') + safeName + '.ncanvas');
+
+        if (targetFolder && !filePath.startsWith(targetFolder + '/')) {
+            notify('文件名无效：不允许路径穿越', 'error');
+            return;
+        }
+        if (this.app.vault.getAbstractFileByPath(filePath)) {
+            notify('文件已存在：' + filePath, 'error');
+            return;
+        }
+
+        // Step 4: Create the blank .ncanvas (single Entry start node)
+        await this.app.vault.create(filePath, JSON.stringify(createBlankNcanvas(name.trim()), null, 2));
+
+        // Step 5: Add a file node for the new dialogue to the canvas
         const content = await this.app.vault.read(canvasFile);
         let canvas;
         try {
             canvas = JSON.parse(content);
         } catch (e) {
-            notify('解析 .canvas JSON 失败：' + e.message, 'error');
+            notify('对话已创建，但解析 .canvas JSON 失败：' + e.message, 'error');
             return;
         }
-
-        // Add dialogue node
-        const updated = addDialogueNodeToCanvas(canvas, chosen.path);
-
-        // Write back (tab-indented to match Obsidian Canvas format)
+        const updated = addDialogueNodeToCanvas(canvas, filePath);
         await this.app.vault.modify(canvasFile, JSON.stringify(updated, null, '\t'));
-        notify('已添加对话节点：' + chosen.path);
+
+        notify('已创建对话：' + filePath);
     }
 
     async _addFileNodeToCanvasFile(canvasFile, entityFiles, entityType) {
