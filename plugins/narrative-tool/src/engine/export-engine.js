@@ -302,8 +302,8 @@ function exportEngine(ncanvasJson, config) {
             // Then append MED-specific lines if enabled. Choice nodes handle
             // their own per-option mutations and inline [if cond /] suffixes
             // inside formatChoiceNode — calling formatMedNode here would
-            // re-emit merged mutations and stray [if]/[else]/[/if] block
-            // lines for nested choices (WR-01). Mirrors the top-level
+            // re-emit merged mutations and stray conditional block lines
+            // for nested choices (WR-01). Mirrors the top-level
             // walkNode Choice branch, which never calls formatMedNode.
             if (childCtx.medEnabled && node.type !== 'Choice') {
                 const medLines = formatMedNode(node, childCtx);
@@ -341,7 +341,7 @@ function exportEngine(ncanvasJson, config) {
     function walkChildLinks(nodeId, depth) {
         const children = adjacency.get(nodeId) || [];
         // MED-08 (links): when MED is enabled and any outgoing link carries
-        // requirements, wrap the branches in [if]/[else]/[/if] blocks. The
+        // requirements, wrap the branches in native if/else blocks. The
         // capture callback splices out the lines walkSingleLink just pushed
         // so the block keywords can bracket them (walkNode pushes into the
         // shared `lines` array; everything here runs synchronously).

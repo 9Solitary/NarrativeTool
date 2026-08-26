@@ -412,7 +412,7 @@ function formatChoiceNode(node, ctx) {
                 return walkSubtree(outLink.to, d, walkVisited);
             };
             // MED-08 (links): when MED is enabled and any outgoing link
-            // carries requirements, wrap the branches in [if]/[else]/[/if]
+            // carries requirements, wrap the branches in native if/else
             // blocks; block keywords at this depth, content one level deeper.
             const blockLines = ctx.medEnabled
                 ? formatLinkConditionalBlocks(outgoingLinks, walkDepth, walkOutLink)

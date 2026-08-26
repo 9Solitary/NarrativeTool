@@ -151,7 +151,9 @@ function detectMedState(ncanvas) {
  * Handles:
  *   - State mutations (MED-02/MED-03): do set_flag, do add_res from choiceOptions.effects[]
  *   - Direct check (MED-07): ~ direct_check for Event nodes with check metadata
- *   - Conditional branching (MED-08): [if]/[else]/[/if] block wrapping for Choice options
+ *   - Link conditional branching (MED-08): native if/else blocks via
+ *     formatLinkConditionalBlocks (Choice option visibility stays inline
+ *     [if condition /], handled by gd-format.js's formatChoiceNode)
  *
  * Note: Inline checks [#check] (MED-04), terms [term] (MED-05), and variable display
  * {{res()}} (MED-06) are handled by gd-format.js's resolveVariables during body
@@ -174,10 +176,6 @@ function formatMedNode(node, ctx) {
     // Direct checks (MED-07)
     const directCheckLines = emitDirectCheck(node, depth);
     lines.push(...directCheckLines);
-
-    // Conditional branching (MED-08)
-    const conditionalLines = emitConditionalBlocks(node, depth);
-    lines.push(...conditionalLines);
 
     return lines;
 }
@@ -312,93 +310,20 @@ function slugifyForCheck(name) {
 }
 
 // -------------------------------------------------------------------------
-// Conditional Branching — [if]/[else]/[/if] blocks (MED-08)
+// Link Conditional Branching — native if/else blocks for link.requirements
 // -------------------------------------------------------------------------
 
 /**
- * Emit conditional block lines for Choice nodes that have requires conditions.
- *
- * Logic:
- *   - Only applies to Choice nodes with choiceOptions having requires strings.
- *   - Groups options by conditional/unconditional status.
- *   - If NO options have conditions → emit nothing.
- *   - If SOME options have conditions:
- *     * Emits [if <condition>] before the FIRST conditional option's content.
- *     * Emits [else] between conditional and unconditional content groups.
- *     * Emits [/if] after the LAST option's content.
- *   - All block lines are at the current indentation depth.
- *
- * Note: The option line itself gets the inline [if condition /] suffix,
- * which is handled by gd-format.js's formatChoiceNode. This function emits
- * the BLOCK wrapping lines (if/else/end) that surround the content.
- *
- * @param {Object} node - The .ncanvas node object (must be type "Choice")
- * @param {number} depth - Current indentation depth
- * @returns {Array<string>} Conditional block lines
- */
-function emitConditionalBlocks(node, depth) {
-    if (node.type !== 'Choice') return [];
-
-    const choiceOptions = node.choiceOptions || [];
-    if (choiceOptions.length === 0) return [];
-
-    // Classify each option as conditional or unconditional
-    const conditionalOpts = [];
-    const unconditionalOpts = [];
-
-    for (let i = 0; i < choiceOptions.length; i++) {
-        const opt = choiceOptions[i];
-        const hasCondition = opt && typeof opt.requires === 'string' && opt.requires.trim().length > 0;
-
-        if (hasCondition) {
-            conditionalOpts.push({ index: i, option: opt });
-        } else {
-            unconditionalOpts.push({ index: i, option: opt });
-        }
-    }
-
-    // If no options have conditions, no conditional blocks needed
-    if (conditionalOpts.length === 0) return [];
-
-    const lines = [];
-    const prefix = indent(depth);
-
-    // Emit [if] for the first conditional option
-    const firstCond = conditionalOpts[0];
-    lines.push(prefix + TOKENS.IF_BLOCK_OPEN + firstCond.option.requires + ']');
-
-    // Emit [else] for each subsequent conditional option
-    // (after the first option's content concludes and before the next starts)
-    for (let i = 1; i < conditionalOpts.length; i++) {
-        lines.push(prefix + TOKENS.ELSE_BLOCK);
-    }
-
-    // Emit [else] if there are unconditional options after all conditional ones
-    if (unconditionalOpts.length > 0) {
-        lines.push(prefix + TOKENS.ELSE_BLOCK);
-    }
-
-    // Close the block
-    lines.push(prefix + TOKENS.IF_BLOCK_CLOSE);
-
-    return lines;
-}
-
-// -------------------------------------------------------------------------
-// Link Conditional Branching — [if]/[else]/[/if] blocks for link.requirements
-// -------------------------------------------------------------------------
-
-/**
- * Wrap the conditional outgoing links of a non-Choice node in MED
- * [if]/[else]/[/if] blocks. Follows the emitConditionalBlocks conventions:
- * block keywords sit at the current depth, branch content one level deeper,
- * condition strings passed through verbatim (T-02-06).
+ * Wrap the conditional outgoing links of a non-Choice node in native
+ * Dialogue Manager if/else blocks (indentation-delimited, no closer).
+ * Condition strings are passed through verbatim (T-02-06).
  *
  * Semantics:
- *   - The first link with non-empty requirements opens `[if <requirements>]`.
- *   - gd-constants has no elif token, so each further conditional link is
- *     expressed as `[else]` + a nested `[if]` block one level deeper.
- *   - Links with empty requirements form the trailing `[else]` branch.
+ *   - The first link with non-empty requirements opens `if <requirements>`.
+ *   - No elif is emitted: each further conditional link is expressed as
+ *     `else` + a nested `if` block one level deeper.
+ *   - Links with empty requirements form the trailing `else` branch.
+ *   - Blocks end by dedent; there is no endif/closer token.
  *   - Returns null when no link carries requirements, so callers fall back
  *     to the plain walk and output stays byte-identical without conditions.
  *
@@ -419,20 +344,19 @@ function formatLinkConditionalBlocks(links, depth, walkLink) {
 
     function emitGroup(cond, els, d) {
         const prefix = indent(d);
-        lines.push(prefix + TOKENS.IF_BLOCK_OPEN + cond[0].requirements + ']');
+        lines.push(prefix + TOKENS.IF_OPEN + cond[0].requirements);
         lines.push(...walkLink(cond[0], d + 1));
         const rest = cond.slice(1);
         if (rest.length > 0) {
-            // No elif token exists: nest a deeper [if] under [else]
-            lines.push(prefix + TOKENS.ELSE_BLOCK);
+            // No elif: nest a deeper if block under else
+            lines.push(prefix + TOKENS.ELSE);
             emitGroup(rest, els, d + 1);
         } else if (els.length > 0) {
-            lines.push(prefix + TOKENS.ELSE_BLOCK);
+            lines.push(prefix + TOKENS.ELSE);
             for (const l of els) {
                 lines.push(...walkLink(l, d + 1));
             }
         }
-        lines.push(prefix + TOKENS.IF_BLOCK_CLOSE);
     }
 
     emitGroup(condLinks, elseLinks, depth);
