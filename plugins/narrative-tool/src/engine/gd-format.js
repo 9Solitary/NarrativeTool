@@ -1,10 +1,11 @@
 // gd-format.js — Godot Dialogue Manager base syntax formatter
 //
 // Exports a single `formatNode(node, ctx)` function that dispatches to
-// type-specific formatters for all 6 node types (Entry, Dialog, Content,
-// Choice, Marker, Event).
+// type-specific formatters for all 7 node types (Entry, Dialog, Content,
+// Choice, Marker, Event, End).
 //
 // As specified in 02-01-PLAN.md and RESEARCH.md Pattern 2 (Format Function Dispatch).
+// NG-04 (Phase 11): End nodes are explicit terminals emitting zero lines.
 
 const { TOKENS } = require('./gd-constants');
 const { formatLinkConditionalBlocks, translateConditionToMed } = require('./med-format');
@@ -545,6 +546,21 @@ function formatEventNode(node, ctx) {
     return lines;
 }
 
+/**
+ * Format an End node (NG-04).
+ * Emits nothing — End is an explicit terminal marker that distinguishes an
+ * intentional (optionally named) ending from a forgotten dead-end. Without
+ * this entry an End node would fall through to the Content fallback and leak
+ * its body into the export.
+ *
+ * @param {Object} node - The End node
+ * @param {Object} ctx - Context object
+ * @returns {Array<string>} Always empty
+ */
+function formatEndNode(node, ctx) {
+    return [];
+}
+
 // -------------------------------------------------------------------------
 // Dispatch
 // -------------------------------------------------------------------------
@@ -556,6 +572,7 @@ const FORMATTERS = {
     'Choice': formatChoiceNode,
     'Marker': formatMarkerNode,
     'Event': formatEventNode,
+    'End': formatEndNode,
 };
 
 /**
