@@ -1,0 +1,9 @@
+{
+    "id": "narrative-graph",
+    "name": "Narrative Graph",
+    "version": "0.1.0",
+    "minAppVersion": "1.5.0",
+    "description": "Visual node editor for .ncanvas dialogue graphs (saved-state v1 compatible)",
+    "author": "Narrative Toolchain",
+    "isDesktopOnly": true
+}

@@ -1,0 +1,808 @@
+/* Narrative Graph — canvas view styles (Phase 11 M1a, NG-08/NG-09) */
+
+.narrative-graph-view {
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.narrative-graph-error {
+    color: var(--text-error);
+    padding: 12px 16px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Frame + world transform stack
+ * ------------------------------------------------------------------------- */
+
+.ng-canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--background-primary);
+    /* UAT-6 #2: faint dot grid. Tile position/size are driven by viewport.js
+     * (derived from the world translate/scale); the 40px default below only
+     * covers the first paint before the camera applies. */
+    background-image: radial-gradient(circle,
+        color-mix(in srgb, var(--text-faint) 55%, transparent) 1.2px,
+        transparent 1.2px);
+    background-size: 40px 40px;
+    /* UAT-5: default arrow at rest; grab only while Space is held,
+     * grabbing only during an active pan gesture. */
+    cursor: default;
+}
+
+.ng-canvas--space {
+    cursor: grab;
+}
+
+.ng-canvas--panning,
+.ng-canvas--panning * {
+    cursor: grabbing !important;
+}
+
+.ng-canvas__warning {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: var(--background-modifier-error);
+    color: var(--text-on-accent);
+    font-size: var(--font-ui-smaller);
+    pointer-events: auto;
+}
+
+.ng-world {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    width: 0;
+    height: 0;
+}
+
+.ng-edges {
+    position: absolute;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.ng-edge__path {
+    fill: none;
+    stroke: var(--text-faint);
+    stroke-width: 2;
+}
+
+/* Fat invisible hit path: makes thin edges clickable (M1b selection) */
+.ng-edge__hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 14;
+    pointer-events: stroke;
+}
+
+/* M3 polish: hover highlight aids picking edges out of dense graphs.
+ * Placed before .is-selected so the selection style wins (equal
+ * specificity — source order decides). */
+.ng-edge:hover .ng-edge__path {
+    stroke: var(--text-muted);
+    stroke-width: 3;
+}
+
+.ng-edge.is-selected .ng-edge__path {
+    stroke: var(--interactive-accent);
+    stroke-width: 3;
+}
+
+/* Live ghost bezier while dragging a new link from a port */
+.ng-edge__ghost {
+    fill: none;
+    stroke: var(--interactive-accent);
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+    pointer-events: none;
+}
+
+.ng-edge__label {
+    fill: var(--text-muted);
+    font-size: 12px;
+    paint-order: stroke;
+    stroke: var(--background-primary);
+    stroke-width: 4;
+}
+
+.ng-edge__condition {
+    fill: var(--text-faint);
+    font-size: 11px;
+    font-family: var(--font-monospace);
+    paint-order: stroke;
+    stroke: var(--background-primary);
+    stroke-width: 4;
+}
+
+/* ---------------------------------------------------------------------------
+ * Nodes — auto height (NG-08): min-height only, content flows naturally,
+ * long text is never clipped or scrolled inside a node. Exception: nodes
+ * manually resized in narrative-graph carry `ng-node--fixed` (UAT-6 #5) —
+ * stored height honored, body scrolls (rules in the resize section below).
+ * ------------------------------------------------------------------------- */
+
+.ng-node {
+    position: absolute;
+    min-height: 48px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    overflow: visible;
+    cursor: default;
+    user-select: none;
+}
+
+.ng-node.is-selected {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+}
+
+.ng-node__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-weight: 600;
+}
+
+.ng-node__marker {
+    color: var(--text-accent);
+}
+
+.ng-node__title {
+    flex: 1;
+    overflow-wrap: anywhere;
+}
+
+.ng-node__badge {
+    font-size: var(--font-ui-smaller);
+    font-weight: 400;
+    color: var(--text-faint);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 0 4px;
+}
+
+.ng-node__body {
+    padding: 6px 10px 8px;
+}
+
+.ng-node__text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Dialog turns (NG-05): one `speaker: line` row per turn */
+.ng-node__turn {
+    display: block;
+    margin: 2px 0;
+}
+
+.ng-node__speaker {
+    color: var(--text-accent);
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* Choice options */
+.ng-node__option {
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+}
+
+/* Type accents */
+.ng-node--entry {
+    border-color: var(--color-green);
+}
+
+.ng-node--end {
+    border-color: var(--color-red);
+    background: var(--background-primary);
+}
+
+.ng-node--choice {
+    border-color: var(--color-yellow);
+}
+
+.ng-node--dialog {
+    border-color: var(--color-blue);
+}
+
+.ng-node--unsupported {
+    opacity: 0.75;
+    border-style: dashed;
+}
+
+/* ---------------------------------------------------------------------------
+ * Ports (M1b link creation; UAT-6 #1 four-side handles)
+ * ------------------------------------------------------------------------- */
+
+.ng-port {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--background-primary);
+    border: 2px solid var(--text-faint);
+    cursor: crosshair;
+    z-index: 2;
+    /* Dot CENTER sits on the anchor point: non-option dots are inline-
+     * positioned at the stored port side/t (renderer.js buildPortDot),
+     * so edges end exactly at the visible dot (UAT-5). */
+    transform: translate(-50%, -50%);
+}
+
+.ng-port:hover {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    transform: translate(-50%, -50%) scale(1.3);
+}
+
+/* UAT-6 #1 (native .canvas): side handles are invisible by default — shown
+ * while hovering their node, and on ALL nodes during a link drag (drop
+ * targets). Opacity (not display) keeps geometry measurable for the
+ * edge-endpoint == handle-center contract. */
+.ng-port--side {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 90ms ease;
+    z-index: 3;
+}
+
+.ng-node:hover .ng-port--side,
+.ng-canvas--link-drag .ng-port--side {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Per-option Choice output dots (UAT-8 #2): direct children of the NODE
+ * ROOT, not the option row — a fixed-size node's body is a scroll container
+ * (overflow-y: auto below) whose horizontal clip edge would cut the dot's
+ * outer half (and overflow-clip-margin does not relax a scroll container's
+ * clip — verified in Chrome). measureNode() pins each dot's `top` to its
+ * option row's measured offset; `top: 0` is only the pre-measure fallback.
+ * left: 100% + translate(-50%) puts the dot CENTER on the node's right
+ * edge — exactly where layoutEdge anchors the link. */
+.ng-node > .ng-port--out {
+    left: 100%;
+    top: 0;
+    transform: translate(-50%, -50%);
+}
+
+.ng-node > .ng-port--out:hover {
+    transform: translate(-50%, -50%) scale(1.3);
+}
+
+/* ---------------------------------------------------------------------------
+ * Resize affordance (UAT-6 #5, revised UAT-7, extended UAT-8): the whole
+ * border band of ANY node (selected or merely hovered) is the live resize
+ * hit zone, hit-tested by coordinates in canvas-view.js (geometry
+ * resizeZoneAt) with a live cursor. Only the four corner squares remain in
+ * the DOM — pure decoration, pointer-events: none, so they never steal the
+ * gesture from the coordinate hit test.
+ * ------------------------------------------------------------------------- */
+
+.ng-resize {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid var(--background-primary);
+    background: var(--interactive-accent);
+    display: none;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.ng-node.is-selected .ng-resize {
+    display: block;
+}
+
+/* UAT-8 #1: resize works on ANY node without selecting it first (native
+ * .canvas) — the corner squares show on hover as the affordance. */
+.ng-node:hover .ng-resize {
+    display: block;
+}
+
+.ng-resize--nw { left: -7px; top: -7px; }
+.ng-resize--ne { right: -7px; top: -7px; }
+.ng-resize--sw { left: -7px; bottom: -7px; }
+.ng-resize--se { right: -7px; bottom: -7px; }
+
+/* Fixed-size nodes (manualSize marker — UAT-6 #5): honor the stored height,
+ * scroll overflowing content inside the body instead of regrowing.
+ * UAT-8 #2/#4: the node container stays overflow: visible (inherited from
+ * .ng-node) so port dots and corner decorations are never clipped; ONLY the
+ * inner body scrolls. Choice option dots live outside the body (see the
+ * ports section), so nothing protrudes horizontally and no spurious
+ * horizontal scrollbar appears. */
+.ng-node--fixed {
+    display: flex;
+    flex-direction: column;
+}
+
+.ng-node--fixed .ng-node__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------------------
+ * Toolbar (M1b node creation; UAT-6 #3: 中文标签 + 大号按钮 + 分组)
+ * ------------------------------------------------------------------------- */
+
+.ng-toolbar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ng-toolbar__btn {
+    padding: 6px 14px;
+    font-size: var(--font-ui-small);
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    cursor: pointer;
+}
+
+.ng-toolbar__btn:hover {
+    background: var(--background-modifier-hover);
+}
+
+/* Node-creation group: accent-tinted so it reads as one distinct cluster */
+.ng-toolbar__btn--add {
+    background: color-mix(in srgb, var(--interactive-accent) 16%, var(--background-secondary));
+    border-color: color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
+    font-weight: 600;
+}
+
+.ng-toolbar__btn--add:hover {
+    background: color-mix(in srgb, var(--interactive-accent) 28%, var(--background-secondary));
+}
+
+/* Divider between the creation cluster and utility buttons (变量表) */
+.ng-toolbar__divider {
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: var(--background-modifier-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Inline editor panels (M1b)
+ * ------------------------------------------------------------------------- */
+
+.ng-editor {
+    position: absolute;
+    z-index: 20;
+    width: 320px;
+    max-height: 70%;
+    overflow-y: auto;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--interactive-accent);
+    background: var(--background-primary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: default;
+}
+
+.ng-editor__heading {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+    font-weight: 600;
+}
+
+.ng-editor input[type="text"],
+.ng-editor textarea,
+.ng-editor select {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: var(--font-ui-small);
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 4px 6px;
+}
+
+.ng-editor textarea {
+    resize: none;
+    overflow: hidden;
+    font-family: inherit;
+}
+
+.ng-editor__turn-row,
+.ng-editor__effect-row,
+.ng-editor__option-head {
+    display: flex;
+    gap: 4px;
+    align-items: flex-start;
+    margin-bottom: 4px;
+}
+
+.ng-editor__speaker {
+    flex: 0 0 90px;
+}
+
+.ng-editor__effect-op {
+    flex: 0 0 90px;
+}
+
+.ng-editor__effects {
+    margin: 4px 0 4px 12px;
+}
+
+.ng-editor__option-row {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 6px;
+    margin-bottom: 6px;
+}
+
+.ng-editor__row-del {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+}
+
+.ng-editor__row-del:hover {
+    color: var(--text-error);
+}
+
+.ng-editor__row-add {
+    align-self: flex-start;
+    padding: 2px 10px;
+    font-size: var(--font-ui-smaller);
+    border-radius: 4px;
+    border: 1px dashed var(--background-modifier-border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.ng-editor__footer {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.ng-editor--link {
+    width: 280px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Type-colored headers (M1b UAT #1: border-only was too subtle — fill the
+ * title bar with the type color, translucent so themes still show through)
+ * ------------------------------------------------------------------------- */
+
+.ng-node__header {
+    border-radius: 7px 7px 0 0;
+}
+
+.ng-node--entry .ng-node__header {
+    background: color-mix(in srgb, var(--color-green) 32%, transparent);
+}
+
+.ng-node--content .ng-node__header {
+    background: var(--background-modifier-hover);
+}
+
+.ng-node--dialog .ng-node__header {
+    background: color-mix(in srgb, var(--color-blue) 32%, transparent);
+}
+
+.ng-node--choice .ng-node__header {
+    background: color-mix(in srgb, var(--color-yellow) 32%, transparent);
+}
+
+.ng-node--end .ng-node__header {
+    background: color-mix(in srgb, var(--color-red) 32%, transparent);
+}
+
+.ng-node--unsupported .ng-node__header {
+    background: var(--background-modifier-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Marquee selection rect (M1b UAT: left-drag on empty canvas = box select)
+ * ------------------------------------------------------------------------- */
+
+.ng-marquee {
+    position: absolute;
+    z-index: 15;
+    border: 1px solid var(--interactive-accent);
+    background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+    pointer-events: none;
+}
+
+/* Text selection must never fight drags (pointerdown preventDefault is
+ * forbidden — see canvas-view.js UAT root-cause note) */
+.ng-canvas {
+    user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Debug overlay (window.__ngDebug = true): port anchors + edge midpoints
+ * ------------------------------------------------------------------------- */
+
+.ng-debug__from {
+    fill: var(--color-green);
+    pointer-events: none;
+}
+
+.ng-debug__to {
+    fill: var(--color-orange);
+    pointer-events: none;
+}
+
+.ng-debug__mid {
+    stroke: var(--color-purple);
+    stroke-width: 2;
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Variables panel (M2a, NG-06): global Variables.md editable grid
+ * ------------------------------------------------------------------------- */
+
+.ng-vars-panel {
+    position: absolute;
+    top: 40px;
+    right: 8px;
+    z-index: 10;
+    width: 420px;
+    max-height: 70%;
+    overflow-y: auto;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    cursor: default;
+}
+
+.ng-vars-panel--hidden {
+    display: none;
+}
+
+.ng-vars-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.ng-vars-panel__title {
+    font-size: var(--font-ui-smaller);
+    font-weight: 600;
+    color: var(--text-faint);
+}
+
+.ng-vars-panel__close,
+.ng-vars-panel__del {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.ng-vars-panel__close:hover,
+.ng-vars-panel__del:hover {
+    color: var(--text-normal);
+}
+
+.ng-vars-panel__grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-ui-smaller);
+}
+
+.ng-vars-panel__grid th {
+    text-align: left;
+    color: var(--text-faint);
+    font-weight: 600;
+    padding: 2px 4px;
+}
+
+.ng-vars-panel__grid td {
+    padding: 2px 4px;
+}
+
+.ng-vars-panel__grid input[type="text"],
+.ng-vars-panel__grid select {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: var(--font-ui-smaller);
+}
+
+.ng-vars-panel__footer {
+    margin-top: 6px;
+}
+
+.ng-vars-panel__add {
+    padding: 2px 10px;
+    font-size: var(--font-ui-smaller);
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    cursor: pointer;
+}
+
+.ng-vars-panel__add:hover {
+    background: var(--background-modifier-hover);
+}
+
+.ng-vars-panel__warnings {
+    margin-top: 6px;
+    color: var(--text-warning, var(--color-yellow));
+    font-size: var(--font-ui-smaller);
+    white-space: pre-wrap;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * M2b (NG-07): condition builder + speaker autocomplete
+ * ------------------------------------------------------------------------- */
+
+.ng-cond {
+    margin: 4px 0;
+    font-size: var(--font-ui-smaller);
+}
+
+.ng-cond__row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.ng-cond__clause-type {
+    flex: 0 0 64px;
+}
+
+.ng-cond__key {
+    flex: 1 1 80px;
+    min-width: 60px;
+}
+
+.ng-cond__op {
+    flex: 0 0 76px;
+}
+
+.ng-cond__value {
+    flex: 1 1 70px;
+    min-width: 50px;
+    display: flex;
+}
+
+.ng-cond__val {
+    width: 100%;
+}
+
+.ng-cond__periods {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.ng-cond__period {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    color: var(--text-muted);
+}
+
+.ng-cond__del {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+}
+
+.ng-cond__del:hover {
+    color: var(--text-error);
+}
+
+.ng-cond__bar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.ng-cond__add,
+.ng-cond__comb {
+    padding: 2px 10px;
+    font-size: var(--font-ui-smaller);
+    border-radius: 4px;
+    border: 1px dashed var(--background-modifier-border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.ng-cond__add:hover,
+.ng-cond__comb:hover {
+    color: var(--text-normal);
+    border-color: var(--text-muted);
+}
+
+.ng-cond__note {
+    color: var(--text-warning, var(--color-yellow));
+    margin: 2px 0;
+}
+
+.ng-cond__raw {
+    margin-top: 4px;
+}
+
+.ng-cond__raw summary {
+    color: var(--text-faint);
+    cursor: pointer;
+    font-size: var(--font-ui-smaller);
+}
+
+/* Speaker autocomplete dropdown (inside the turn-row, anchored below the
+ * speaker input) */
+.ng-editor__turn-row {
+    position: relative;
+}
+
+.ng-ac {
+    position: absolute;
+    z-index: 25;
+    top: 100%;
+    left: 0;
+    min-width: 90px;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.ng-ac__item {
+    padding: 3px 8px;
+    color: var(--text-normal);
+    cursor: pointer;
+}
+
+.ng-ac__item:hover,
+.ng-ac__item--active {
+    background: var(--background-modifier-hover);
+}
