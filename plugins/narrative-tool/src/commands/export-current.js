@@ -13,6 +13,7 @@
 const { exportEngine } = require('../engine/export-engine');
 const { writeDialogueFile } = require('./paths');
 const { loadSharedCharacters } = require('./shared-characters');
+const { loadSharedVariables } = require('./shared-variables');
 const { FileSuggesterModal } = require('../ui/modals');
 const { notify } = require('../ui/notify');
 
@@ -62,12 +63,21 @@ async function doExport(plugin, file) {
             return;
         }
 
-        // 2. Run export engine (SHR-01: inject shared vault characters as fallback lookup)
+        // 2. Run export engine (SHR-01: inject shared vault characters as
+        //    fallback lookup; NG-06: inject global variables table, merged
+        //    under file-local project.variables)
         const title = ncanvasJson.project?.title || file.basename;
+        const warnings = [];
         const dialogueOutput = exportEngine(ncanvasJson, {
             medEnabled: plugin.settings.medEnabled,
-            externalCharacters: loadSharedCharacters(plugin.app)
+            externalCharacters: loadSharedCharacters(plugin.app),
+            externalVariables: await loadSharedVariables(plugin.app, plugin.settings.variablesPath),
+            warnings: warnings
         });
+        if (warnings.length > 0) {
+            for (const w of warnings) console.warn('[Narrative Tool] 导出警告:', w);
+            notify(`导出 "${title}" 有 ${warnings.length} 条警告（详见控制台）`);
+        }
 
         // 3. Status bar: exporting
         plugin.statusBar.setState('exporting', { count: 1 });

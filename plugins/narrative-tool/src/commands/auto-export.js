@@ -19,6 +19,7 @@
 const { exportEngine } = require('../engine/export-engine');
 const { writeDialogueFile } = require('./paths');
 const { loadSharedCharacters } = require('./shared-characters');
+const { loadSharedVariables } = require('./shared-variables');
 
 // ---------------------------------------------------------------------------
 // 1. exportSingleFile — single-file .ncanvas → .dialogue export
@@ -35,9 +36,10 @@ const { loadSharedCharacters } = require('./shared-characters');
  * @param {Object} file - TFile for the .ncanvas file (must have .path, .basename, .extension)
  * @param {string} exportPath - Export destination: '' (alongside source), absolute (fs), or vault-relative
  * @param {boolean} medEnabled - Passed through to exportEngine config
+ * @param {string} [variablesPath] - Global variables table path (NG-06); undefined = default
  * @returns {Promise<{ success: boolean, error?: string, path?: string }>}
  */
-async function exportSingleFile(app, file, exportPath, medEnabled) {
+async function exportSingleFile(app, file, exportPath, medEnabled, variablesPath) {
     try {
         // 1. Read file content
         const content = await app.vault.read(file);
@@ -53,11 +55,16 @@ async function exportSingleFile(app, file, exportPath, medEnabled) {
             };
         }
 
-        // 3. Run through export engine (SHR-01: inject shared vault characters)
+        // 3. Run through export engine (SHR-01: inject shared vault characters;
+        //    NG-06: inject global variables table, file-local wins on conflict)
+        const warnings = [];
         const dialogueText = exportEngine(ncanvasJson, {
             medEnabled: !!medEnabled,
-            externalCharacters: loadSharedCharacters(app)
+            externalCharacters: loadSharedCharacters(app),
+            externalVariables: await loadSharedVariables(app, variablesPath),
+            warnings: warnings
         });
+        for (const w of warnings) console.warn(`[Narrative Tool] 导出警告 (${file.path}):`, w);
 
         // 4. Write through the shared path module (honors exportPath)
         const result = await writeDialogueFile(
@@ -113,7 +120,8 @@ function setupAutoExport(plugin, onExported) {
                     plugin.app,
                     f,
                     plugin.settings.exportPath,
-                    plugin.settings.medEnabled
+                    plugin.settings.medEnabled,
+                    plugin.settings.variablesPath
                 );
                 results.push(result);
             }

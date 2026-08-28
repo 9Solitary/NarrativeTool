@@ -1,9 +1,14 @@
 // med-format.js — MED (Multi-dimensional Event-driven Dialogue) state extension formatter
 //
 // Provides three exported functions:
-//   detectMedState(ncanvas)   — scan project for MED constructs
-//   formatMedHeader(ncanvas)  — emit "using S" header when MED detected
+//   detectMedState(ncanvas, externalVariables?)   — scan project for MED constructs
+//   formatMedHeader(ncanvas, externalVariables?)  — emit "using S" header when MED detected
 //   formatMedNode(node, ctx)  — emit MED-specific lines for a node
+//
+// NG-06: the optional externalVariables argument is the global vault variables
+// table (commands/shared-variables.js); its flag_/res_ keys also trigger
+// detection. Conditions are classified against the merged variables map the
+// engine passes into ctx (file-local project.variables wins on conflict).
 //
 // Implements all 8 MED requirements (MED-01 through MED-08) as specified
 // in 02-02-PLAN.md and 02-RESEARCH.md (Pattern 5: MED State Detection).
@@ -62,10 +67,12 @@ const KNOWN_MUTATION_OPS = new Set(['set_flag', 'add_res', 'subtract', 'set', 'a
  * Returns ["using S", ""] if MED state is detected, otherwise [].
  *
  * @param {Object} ncanvas - Parsed .ncanvas JSON
+ * @param {Object} [externalVariables] - Global variables map (NG-06), also
+ *   considered for detection
  * @returns {Array<string>} Header lines
  */
-function formatMedHeader(ncanvas) {
-    if (detectMedState(ncanvas)) {
+function formatMedHeader(ncanvas, externalVariables) {
+    if (detectMedState(ncanvas, externalVariables)) {
         return [MED_TOKENS.USING_STATE, ''];
     }
     return [];
@@ -79,17 +86,26 @@ function formatMedHeader(ncanvas) {
  * Detect whether a .ncanvas project uses MED state system constructs.
  * Returns true if ANY of these are found:
  * - project.variables has any key starting with flag_ or res_
+ * - externalVariables (NG-06 global table) has any key starting with flag_ or res_
  * - project.script.actions[] has any action with op matching set_flag, add_res, subtract, set, add
  * - Any node has choiceOptions[].requires that is a truthy non-empty string
  * - Any node has choiceOptions[].effects[] with op matching set_flag, add_res, subtract, set, add
  * - Any link in project.links[] has a non-empty requirements string
  *
  * @param {Object} ncanvas - Parsed .ncanvas JSON
+ * @param {Object} [externalVariables] - Global variables map (NG-06)
  * @returns {boolean} Whether MED state system is in use
  */
-function detectMedState(ncanvas) {
+function detectMedState(ncanvas, externalVariables) {
     if (!ncanvas || !ncanvas.project) return false;
     const project = ncanvas.project;
+
+    // NG-06: global variables table keys count toward MED detection
+    if (externalVariables && typeof externalVariables === 'object') {
+        if (Object.keys(externalVariables).some(k => k.startsWith('flag_') || k.startsWith('res_'))) {
+            return true;
+        }
+    }
 
     // Check project.variables for flag_ or res_ prefixed keys
     if (project.variables && typeof project.variables === 'object') {

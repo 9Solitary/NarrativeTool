@@ -14,6 +14,7 @@ const path = require('node:path');
 const { exportEngine } = require('../engine/export-engine');
 const { isAbsoluteExportPath, writeDialogueFile } = require('./paths');
 const { loadSharedCharacters } = require('./shared-characters');
+const { loadSharedVariables } = require('./shared-variables');
 
 // ---------------------------------------------------------------------------
 // Path normalization helpers
@@ -40,9 +41,10 @@ function normalizePath(p) {
  * @param {string} exportScope - Vault path prefix to scope file discovery ("/" = all)
  * @param {boolean} medEnabled - Whether to include MED state extension syntax
  * @param {Function} [onProgress] - Optional (count, total) progress callback (UX-03)
+ * @param {string} [variablesPath] - Global variables table path (NG-06); undefined = default
  * @returns {Promise<{ exported: number, failed: number, errors: Array<{file: string, message: string}> }>}
  */
-async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onProgress) {
+async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onProgress, variablesPath) {
     // Normalize inputs
     const scopePrefix = normalizePath(exportScope || '/');
 
@@ -74,6 +76,7 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
 
     let exported = 0;
     let failed = 0;
+    let warningCount = 0;
     const errors = [];
     const total = inScopeFiles.length;
     let processed = 0;
@@ -81,6 +84,9 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
     // SHR-01: load shared vault characters once per batch run; the engine
     // uses them as a fallback lookup for gc- cast references.
     const externalCharacters = loadSharedCharacters(app);
+    // NG-06: load the global variables table once per batch run; the engine
+    // merges it UNDER file-local project.variables.
+    const externalVariables = await loadSharedVariables(app, variablesPath);
 
     for (const file of inScopeFiles) {
         processed++;
@@ -103,10 +109,15 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
             }
 
             // 3. Run through export engine
+            const fileWarnings = [];
             const dialogueText = exportEngine(ncanvasJson, {
                 medEnabled: !!medEnabled,
-                externalCharacters: externalCharacters
+                externalCharacters: externalCharacters,
+                externalVariables: externalVariables,
+                warnings: fileWarnings
             });
+            for (const w of fileWarnings) console.warn(`[Narrative Tool] 导出警告 (${file.path}):`, w);
+            warningCount += fileWarnings.length;
 
             // 4. Construct output filename (flat basename layout)
             // outBasename = <basename>.dialogue; duplicate-basename prefix
@@ -140,7 +151,7 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
         }
     }
 
-    return { exported, failed, errors };
+    return { exported, failed, errors, warnings: warningCount };
 }
 
 // ---------------------------------------------------------------------------

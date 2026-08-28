@@ -27,7 +27,10 @@ const DEFAULT_SETTINGS = Object.freeze({
     medEnabled: true,
 
     /** Vault path to scope export operations. "/" means entire vault. */
-    exportScope: '/'
+    exportScope: '/',
+
+    /** Vault path of the global variables table (NG-06) */
+    variablesPath: 'Variables.md'
 });
 
 // ---------------------------------------------------------------------------
@@ -128,6 +131,18 @@ class NarrativeToolSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.exportScope)
                 .onChange(async (value) => {
                     this.plugin.settings.exportScope = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- 全局变量表路径 (NG-06) ---
+        new Setting(containerEl)
+            .setName('全局变量表路径')
+            .setDesc('全 vault 共享变量表的 vault 相对路径（markdown 表格：变量|类型|初始值|备注）。与 narrative-graph 的变量表面板读写同一文件。')
+            .addText(text => text
+                .setPlaceholder('Variables.md')
+                .setValue(this.plugin.settings.variablesPath)
+                .onChange(async (value) => {
+                    this.plugin.settings.variablesPath = value;
                     await this.plugin.saveSettings();
                 }));
     }

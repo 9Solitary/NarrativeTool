@@ -281,7 +281,7 @@ module.exports = class NarrativeToolPlugin extends Plugin {
      * Updates the status bar through exporting -> success/failure -> pending (5s).
      */
     async batchExportAllDialogues() {
-        const { exportPath, exportScope, medEnabled } = this.settings;
+        const { exportPath, exportScope, medEnabled, variablesPath } = this.settings;
 
         // Show exporting state on the status bar
         this.statusBar.setState('exporting');
@@ -290,7 +290,8 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             const result = await exportAllDialogues(
                 this.app, exportPath, exportScope, medEnabled,
                 // UX-03: per-file progress on the status bar
-                (count, total) => this.statusBar.setState('exporting', { count, total })
+                (count, total) => this.statusBar.setState('exporting', { count, total }),
+                variablesPath
             );
 
             if (result.failed > 0) {
@@ -304,6 +305,9 @@ module.exports = class NarrativeToolPlugin extends Plugin {
             } else {
                 this.statusBar.setState('success', result);
                 notify(`批量导出完成：${result.exported} 个成功`);
+            }
+            if (result.warnings > 0) {
+                notify(`批量导出产生 ${result.warnings} 条警告（详见控制台）`);
             }
 
             // Auto-revert to pending after 5 seconds

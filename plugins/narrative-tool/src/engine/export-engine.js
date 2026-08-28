@@ -265,9 +265,11 @@ function resolveVariables(text, variables, medEnabled) {
  * Convert a parsed .ncanvas JSON object to a Godot DM .dialogue string.
  *
  * @param {Object} ncanvasJson - Parsed .ncanvas JSON (must have project.nodes)
- * @param {Object} config - { medEnabled: boolean, externalCharacters?: Array<{id, name}> }
+ * @param {Object} config - { medEnabled: boolean, externalCharacters?: Array<{id, name}>, externalVariables?: Object }
  *   externalCharacters: shared vault characters (SHR-01), used only as a
  *   fallback lookup — project.characters always wins on id collisions.
+ *   externalVariables: global vault variables table (NG-06), merged UNDER
+ *   project.variables — file-local entries always win on name conflicts.
  * @returns {string} The .dialogue formatted string (trailing newline)
  *
  * Throws if project.nodes is missing.
@@ -291,7 +293,14 @@ function exportEngine(ncanvasJson, config) {
 
     const links = ncanvasJson.project.links || [];
     const characters = ncanvasJson.project.characters || [];
-    const variables = ncanvasJson.project.variables || {};
+    // NG-06: global vault variables injected via config.externalVariables,
+    // merged UNDER file-local project.variables (file-local wins on conflict).
+    // With no globals this reduces to project.variables verbatim — byte-exact
+    // backward compat for all pre-NG-06 fixtures.
+    const externalVariables = (cfg.externalVariables && typeof cfg.externalVariables === 'object')
+        ? cfg.externalVariables
+        : {};
+    const variables = Object.assign({}, externalVariables, ncanvasJson.project.variables || {});
 
     // SHR-01: shared vault characters injected via config.externalCharacters.
     // They are a fallback lookup only — external entries are placed first so
@@ -358,17 +367,18 @@ function exportEngine(ncanvasJson, config) {
     // walk; their shared subtrees are emitted once after the main walk.
     const emittedMerges = [];
 
-    // MED auto-detection (from RESEARCH.md Pattern 5)
+    // MED auto-detection (from RESEARCH.md Pattern 5; NG-06: global variables
+    // with flag_/res_ keys also count toward detection)
     let medDetected = false;
     if (cfg.medEnabled) {
-        medDetected = detectMedState(ncanvasJson);
+        medDetected = detectMedState(ncanvasJson, externalVariables);
     }
 
     const lines = [];
 
     // Emit MED header if detected
     if (medDetected) {
-        const medHeader = formatMedHeader(ncanvasJson);
+        const medHeader = formatMedHeader(ncanvasJson, externalVariables);
         if (medHeader && medHeader.length > 0) {
             lines.push(...medHeader);
         }
