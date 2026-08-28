@@ -13,8 +13,8 @@
 /**
  * @typedef {Object} MEDTokens
  * @property {string} USING_STATE - Declaration that opens a state namespace. Format: "using S"
- * @property {string} SET_FLAG - Mutation command to set a boolean flag. Format: "do set_flag id value"
- * @property {string} ADD_RES - Mutation command to add to a numeric resource. Format: "do add_res id amount"
+ * @property {string} SET_FLAG - Mutation command to set a boolean flag. Format: "do set_flag(&\"id\", value)"
+ * @property {string} ADD_RES - Mutation command to add to a numeric resource. Format: "do add_res(&\"id\", amount)"
  * @property {string} CHECK_PATTERN - Prefix for inline stat checks. Format: "[#check=type:id:threshold]"
  * @property {string} DIRECT_CHECK - Direct check cue for stat verification. Format: "~ direct_check ..."
  * @property {string} TERM_PATTERN - Prefix for inline term definitions. Format: "[term=id]"

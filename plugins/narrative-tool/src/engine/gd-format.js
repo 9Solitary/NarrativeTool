@@ -7,7 +7,7 @@
 // As specified in 02-01-PLAN.md and RESEARCH.md Pattern 2 (Format Function Dispatch).
 
 const { TOKENS } = require('./gd-constants');
-const { formatLinkConditionalBlocks } = require('./med-format');
+const { formatLinkConditionalBlocks, translateConditionToMed } = require('./med-format');
 
 // -------------------------------------------------------------------------
 // Utility helpers
@@ -415,7 +415,7 @@ function formatChoiceNode(node, ctx) {
             // carries requirements, wrap the branches in native if/else
             // blocks; block keywords at this depth, content one level deeper.
             const blockLines = ctx.medEnabled
-                ? formatLinkConditionalBlocks(outgoingLinks, walkDepth, walkOutLink)
+                ? formatLinkConditionalBlocks(outgoingLinks, walkDepth, walkOutLink, ctx.variables)
                 : null;
             if (blockLines) {
                 result.push(...blockLines);
@@ -439,8 +439,9 @@ function formatChoiceNode(node, ctx) {
             let optLine = TOKENS.OPTION_PREFIX + label;
 
             // MED-08: Add [if condition /] suffix when option has requires and MED is enabled
+            // Canvas expressions are translated to MED state spec calls (flag_ok/res_ok/...)
             if (ctx.medEnabled && opt.requires && opt.requires.trim().length > 0) {
-                optLine += ' [if ' + opt.requires + ' /]';
+                optLine += ' [if ' + translateConditionToMed(opt.requires, ctx.variables) + ' /]';
             }
 
             lines.push(indentedLine(ctx.depth, optLine));
