@@ -454,13 +454,26 @@ function formatChoiceNode(node, ctx) {
             if (targetLink && targetLink.to) {
                 const subVisited = new Set();
                 const subtreeLines = walkSubtree(targetLink.to, childDepth, subVisited);
-                lines.push(...subtreeLines);
 
                 // Emit MED mutations inline under the target content (MED-02, MED-03)
                 // Mutations come from choice option effects, not the target node itself.
+                // When the subtree ends with a jump (`=> cue`) at this depth, the
+                // mutations must precede it: the runtime executes lines in order,
+                // so a mutation placed after the jump would never run.
+                let trailingJump = null;
+                if (subtreeLines.length > 0) {
+                    const last = subtreeLines[subtreeLines.length - 1];
+                    if (/^\t*=> /.test(last) && last.match(/^\t*/)[0].length === childDepth) {
+                        trailingJump = subtreeLines.pop();
+                    }
+                }
+                lines.push(...subtreeLines);
                 if (ctx.formatMutationLines && Array.isArray(opt.effects) && opt.effects.length > 0) {
                     const mutLines = ctx.formatMutationLines(opt.effects, childDepth);
                     lines.push(...mutLines);
+                }
+                if (trailingJump) {
+                    lines.push(trailingJump);
                 }
             }
         }
