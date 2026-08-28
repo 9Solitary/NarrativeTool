@@ -121,6 +121,92 @@ function topologicalSort(nodes, links, startId) {
 }
 
 // -------------------------------------------------------------------------
+// Conditional-group convergence (inline fall-through)
+// -------------------------------------------------------------------------
+
+/**
+ * Detect whether every arm of a conditional-link group re-converges on one
+ * shared node through simple linear chains (no Choices, no nested branches,
+ * no merge/loop targets in between). Returns the convergence node id, or
+ * null when the pattern does not apply and the caller should fall back to
+ * the legacy block walk.
+ *
+ * @param {Array<Object>} children - Outgoing links of the branching node
+ * @param {Map<string, Array<Object>>} adjacency - from -> link[]
+ * @param {Map<string, Object>} nodeMap - id -> node
+ * @param {Object} graph - analyzeGraph() result
+ * @returns {string|null} Convergence node id
+ */
+function findBranchConvergence(children, adjacency, nodeMap, graph) {
+    if (children.length < 2) return null;
+    const chains = [];
+    for (const link of children) {
+        const chain = [];
+        let cur = link.to;
+        while (true) {
+            // Arms terminating in a merge/loop jump end there; they take no
+            // part in fall-through convergence.
+            if (graph.merges.has(cur) || graph.loops.has(cur)) break;
+            const node = nodeMap.get(cur);
+            // A Choice (or unknown node) ends the simple chain.
+            if (!node || node.type === 'Choice') break;
+            if (chain.includes(cur)) break; // cycle safety
+            chain.push(cur);
+            const out = (adjacency.get(cur) || []).filter(l => !graph.loopEdges.has(l.id));
+            if (out.length !== 1) break; // dead end or nested branch
+            cur = out[0].to;
+        }
+        if (chain.length === 0) return null;
+        chains.push(chain);
+    }
+    let best = null;
+    let bestScore = Infinity;
+    for (let i = 0; i < chains[0].length; i++) {
+        const id = chains[0][i];
+        let maxIdx = i;
+        let common = true;
+        for (let c = 1; c < chains.length; c++) {
+            const idx = chains[c].indexOf(id);
+            if (idx === -1) { common = false; break; }
+            if (idx > maxIdx) maxIdx = idx;
+        }
+        if (common && maxIdx < bestScore) { best = id; bestScore = maxIdx; }
+    }
+    if (!best) return null;
+    // A merge-registered target is already handled by jump-to-section.
+    if (graph.merges.has(best)) return null;
+    // An arm starting directly at the convergence node would emit an empty
+    // if/else arm — bail to the legacy walk.
+    for (const chain of chains) {
+        if (chain[0] === best) return null;
+    }
+    return best;
+}
+
+/**
+ * Check whether a branch link leads into a simple chain that ends at a node
+ * with no outgoing links (a dead end), never reaching a merge or loop jump.
+ *
+ * @param {Object} link - The branch's first link
+ * @param {Map<string, Array<Object>>} adjacency - from -> link[]
+ * @param {Object} graph - analyzeGraph() result
+ * @returns {boolean}
+ */
+function branchIsDeadEnd(link, adjacency, graph) {
+    const seen = new Set();
+    let cur = link.to;
+    while (true) {
+        if (seen.has(cur)) return false;
+        seen.add(cur);
+        if (graph.merges.has(cur) || graph.loops.has(cur)) return false;
+        const out = (adjacency.get(cur) || []).filter(l => !graph.loopEdges.has(l.id));
+        if (out.length === 0) return true;
+        if (out.length > 1) return false; // nested structure decides for itself
+        cur = out[0].to;
+    }
+}
+
+// -------------------------------------------------------------------------
 // Variable resolution
 // -------------------------------------------------------------------------
 
@@ -261,9 +347,12 @@ function exportEngine(ncanvasJson, config) {
     // walk below takes the exact pre-Phase-6 code paths (golden contract:
     // existing .dialogue output stays byte-identical).
     const graph = analyzeGraph(nodes, links, startNode.id);
-    if (Array.isArray(cfg.warnings)) {
-        cfg.warnings.push(...graph.warnings);
-    }
+    // Warnings are collected locally and flushed to cfg.warnings at the end
+    // of the walk: convergence points resolved by inline fall-through (see
+    // walkChildLinks) make their "ambiguous convergence" warnings obsolete,
+    // so they are filtered out before the flush.
+    const warnings = [...graph.warnings];
+    const resolvedConvergences = new Set();
 
     // FEAT-02: ordered record of merge points already jumped to during the
     // walk; their shared subtrees are emitted once after the main walk.
@@ -327,6 +416,7 @@ function exportEngine(ncanvasJson, config) {
         links: links,
         graph: graph,
         emittedMerges: emittedMerges,
+        warnings: warnings,
         charactersArr: mergedCharacters,
         variablesObj: variables,
         walkChildren: function(nodeId, depth) {
@@ -338,6 +428,13 @@ function exportEngine(ncanvasJson, config) {
     // Emits `=> cue` jump lines for user-drawn loop back-edges instead of
     // recursing into the already-emitted Choice. When graph.loopEdges is
     // empty this behaves exactly like the pre-Phase-6 inline loops.
+    //
+    // stopAtId: while walking the arms of a conditional-link group whose
+    // branches re-converge (inline fall-through), this holds the convergence
+    // node id; links into it are not walked inside the block — the shared
+    // trunk is walked once, inline, right after the if/else closes.
+    let stopAtId = null;
+
     function walkChildLinks(nodeId, depth) {
         const children = adjacency.get(nodeId) || [];
         // MED-08 (links): when MED is enabled and any outgoing link carries
@@ -346,15 +443,50 @@ function exportEngine(ncanvasJson, config) {
         // so the block keywords can bracket them (walkNode pushes into the
         // shared `lines` array; everything here runs synchronously).
         if (ctx.medEnabled) {
-            const blockLines = formatLinkConditionalBlocks(children, depth,
-                (link, d) => {
-                    const start = lines.length;
-                    walkSingleLink(link, d);
-                    return lines.splice(start, lines.length - start);
-                });
-            if (blockLines) {
-                lines.push(...blockLines);
-                return;
+            const hasReq = (l) => l && typeof l.requirements === 'string'
+                && l.requirements.trim().length > 0;
+            if (children.some(hasReq)) {
+                // Non-exhaustive condition group: no unconditional link to
+                // fall back on, so unmatched states produce no output.
+                if (children.every(hasReq)) {
+                    warnings.push(
+                        `Conditional group at '${nodeId}' has no unconditional else link; ` +
+                        `unmatched states produce no output.`
+                    );
+                }
+                // Diamond detection: when every arm of the group re-converges
+                // on one shared node through simple linear chains, close the
+                // if/else at that point and continue the shared trunk inline
+                // (fall-through), instead of letting the first arm swallow
+                // the trunk and silently truncating the others.
+                const convergence = stopAtId === null
+                    ? findBranchConvergence(children, adjacency, nodeMap, graph)
+                    : null;
+                if (convergence) {
+                    resolvedConvergences.add(convergence);
+                    stopAtId = convergence;
+                }
+                const blockLines = formatLinkConditionalBlocks(children, depth,
+                    (link, d) => {
+                        const start = lines.length;
+                        walkSingleLink(link, d);
+                        // Dead-end arm inside a block: without an explicit
+                        // terminator the flow would fall through into the
+                        // merge sections appended after this walk.
+                        if (!convergence && d >= 1 && graph.merges.size > 0
+                            && branchIsDeadEnd(link, adjacency, graph)) {
+                            lines.push('\t'.repeat(d) + '=> END');
+                        }
+                        return lines.splice(start, lines.length - start);
+                    }, variables);
+                stopAtId = null;
+                if (blockLines) {
+                    lines.push(...blockLines);
+                    if (convergence) {
+                        walkNode(convergence, depth);
+                    }
+                    return;
+                }
             }
         }
         for (const link of children) {
@@ -363,6 +495,9 @@ function exportEngine(ncanvasJson, config) {
     }
 
     function walkSingleLink(link, depth) {
+        // Inline fall-through: the arm stops at the convergence node; the
+        // shared trunk is emitted once after the if/else block closes.
+        if (stopAtId && link.to === stopAtId) return;
         if (graph.loopEdges.has(link.id)) {
             lines.push('\t'.repeat(depth) + '=> ' + graph.loops.get(link.to));
             return;
@@ -374,6 +509,17 @@ function exportEngine(ncanvasJson, config) {
                 emittedMerges.push(link.to);
             }
             lines.push('\t'.repeat(depth) + '=> ' + graph.merges.get(link.to));
+            return;
+        }
+        // A plain edge into an already-emitted node means this branch is
+        // being silently truncated (typically a convergence the merge
+        // pre-pass declined to register). Surface it instead of dropping
+        // the rest of the branch without a trace.
+        if (visited.has(link.to)) {
+            warnings.push(
+                `Link '${link.id}' -> '${link.to}' skipped: target already emitted ` +
+                `on another path; the remainder of this branch is unreachable in the export.`
+            );
             return;
         }
         walkNode(link.to, depth);
@@ -445,6 +591,15 @@ function exportEngine(ncanvasJson, config) {
             lines.push('~ ' + graph.merges.get(emittedMerges[i]));
         }
         walkNode(mergeNode.id, 0);
+    }
+
+    // Flush collected warnings to the caller, dropping "ambiguous
+    // convergence" warnings for nodes the walk resolved via inline
+    // fall-through (they are no longer truncated or duplicated).
+    const finalWarnings = warnings.filter(w =>
+        ![...resolvedConvergences].some(id => w.includes("'" + id + "'")));
+    if (Array.isArray(cfg.warnings)) {
+        cfg.warnings.push(...finalWarnings);
     }
 
     return lines.join('\n') + '\n';
