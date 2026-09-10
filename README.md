@@ -3,6 +3,8 @@
 一套面向叙事策划的 Obsidian 插件工具链，用于在 Obsidian 内完成从世界观组织、剧情流程设计到 Godot Dialogue Manager 导出的完整叙事工作流。
 
 > **版本说明（2026-08-06 起）：** 原有的三个插件（`flow-tools` / `dialogue-export` / `narrative-project`）已合并为单一插件 **`narrative-tool`**。旧插件的设置会在首次加载时自动迁移。本文档描述合并后的架构。
+>
+> **各插件的维护状态（含已弃用组件）见 [PLUGINS.md](PLUGINS.md)，改代码前请先查阅。**
 
 ## 目录
 
