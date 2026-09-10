@@ -448,6 +448,22 @@
     color: var(--text-faint);
 }
 
+/* Prev/next hit buttons: compact siblings of the regular toolbar buttons */
+.ng-toolbar__btn--search-nav {
+    padding: 3px 9px;
+    line-height: 1.2;
+    font-weight: 600;
+}
+
+.ng-toolbar__btn--search-nav:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.ng-toolbar__btn--search-nav:disabled:hover {
+    background: var(--background-secondary);
+}
+
 /* Search hit highlight on nodes: warm ring, brighter on the current hit.
  * Box-shadow (not outline) so it composes with the selection outline. */
 .ng-node.ng-node--search-hit {

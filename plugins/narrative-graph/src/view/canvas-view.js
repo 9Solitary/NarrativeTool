@@ -29,10 +29,12 @@
 // (Entry pasted as Content); Ctrl/Cmd+Z / Ctrl+Shift+Z / Ctrl+Y drive a
 // snapshot history (model/history.js, cap 50, committed mutations only —
 // navigation/selection/variables-panel edits create no entries).
-// Node search: Ctrl/Cmd+F focuses the toolbar search box (state lives in
+// Node search: Ctrl/Cmd+F focuses the toolbar search box via a DOCUMENT-
+// level capture keydown gated on this view being the active leaf (works
+// without container focus; background tabs never hijack); state lives in
 // view fields, restored across re-renders; matches id/title/body/turns/
-// Choice options, case-insensitive; Enter/Shift+Enter cycle hits and center
-// the camera). Selected edges expose a target-end drag handle that rewrites
+// Choice options, case-insensitive; Enter/Shift+Enter and the toolbar ‹ ›
+// buttons cycle hits and center the camera. Selected edges expose a target-end drag handle that rewrites
 // the link's per-link `toPort` border anchor (model/ports.js, ops
 // setLinkToPort) without touching node.ports.input.
 //
@@ -148,6 +150,8 @@ class NarrativeGraphView extends TextFileView {
         this._searchIndex = -1;      // current hit within _searchHits (-1 = none)
         this._searchInputEl = null;  // toolbar input (rebuilt each render)
         this._searchCountEl = null;  // hit counter (rebuilt each render)
+        this._searchPrevEl = null;   // prev-hit button (rebuilt each render)
+        this._searchNextEl = null;   // next-hit button (rebuilt each render)
 
         // M2a variables panel state (NG-06)
         this._varsPanel = null;      // VariablesPanel instance (lazily created)
@@ -175,6 +179,7 @@ class NarrativeGraphView extends TextFileView {
         this._onKeyDown = this._handleKeyDown.bind(this);
         this._onKeyUp = this._handleKeyUp.bind(this);
         this._onHoverMove = this._handleHoverMove.bind(this);
+        this._onDocKeyDown = this._handleDocKeyDown.bind(this);
     }
 
     getViewType() {
@@ -249,6 +254,11 @@ class NarrativeGraphView extends TextFileView {
         // focuses it; a typing guard keeps editors/inputs unaffected.
         this.contentEl.addEventListener('keydown', this._onKeyDown);
         this.contentEl.addEventListener('keyup', this._onKeyUp);
+        // Ctrl/Cmd+F must work even when the canvas container does NOT hold
+        // focus (user clicked other UI): document-level CAPTURE listener,
+        // gated on this view being the active one so inactive/background
+        // tabs never hijack the keystroke.
+        document.addEventListener('keydown', this._onDocKeyDown, true);
         // M2a: watch the global variables file for external edits (NG-06).
         if (this.app && this.app.vault && typeof this.app.vault.on === 'function') {
             this._varsModifyRef = this.app.vault.on('modify', (file) => this._onVaultModify(file));
@@ -262,6 +272,7 @@ class NarrativeGraphView extends TextFileView {
         this.contentEl.removeEventListener('pointermove', this._onHoverMove);
         this.contentEl.removeEventListener('keydown', this._onKeyDown);
         this.contentEl.removeEventListener('keyup', this._onKeyUp);
+        document.removeEventListener('keydown', this._onDocKeyDown, true);
         this._cancelDrags();
         if (this._varsModifyRef && this.app && this.app.vault
             && typeof this.app.vault.offref === 'function') {
@@ -295,6 +306,8 @@ class NarrativeGraphView extends TextFileView {
         this._cursorEl = null; // node els are rebuilt; any hover cursor dies with them
         this._searchInputEl = null; // rebuilt by _buildToolbar below
         this._searchCountEl = null;
+        this._searchPrevEl = null;
+        this._searchNextEl = null;
         this.contentEl.empty();
         this.contentEl.addClass('narrative-graph-view');
 
@@ -471,9 +484,34 @@ class NarrativeGraphView extends TextFileView {
         const count = document.createElement('span');
         count.className = 'ng-toolbar__search-count';
         search.appendChild(count);
+        // Prev/next hit buttons — same cycling as Enter / Shift+Enter in the
+        // input. Refocus the input after the click so keyboard cycling keeps
+        // working seamlessly.
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'ng-toolbar__btn ng-toolbar__btn--search-nav';
+        prevBtn.textContent = '‹';
+        prevBtn.title = '上一条 (Shift+Enter)';
+        prevBtn.addEventListener('click', () => {
+            this._stepSearchHit(-1);
+            input.focus();
+        });
+        search.appendChild(prevBtn);
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'ng-toolbar__btn ng-toolbar__btn--search-nav';
+        nextBtn.textContent = '›';
+        nextBtn.title = '下一条 (Enter)';
+        nextBtn.addEventListener('click', () => {
+            this._stepSearchHit(1);
+            input.focus();
+        });
+        search.appendChild(nextBtn);
         toolbar.appendChild(search);
         this._searchInputEl = input;
         this._searchCountEl = count;
+        this._searchPrevEl = prevBtn;
+        this._searchNextEl = nextBtn;
         this._frameEl.appendChild(toolbar);
     }
 
@@ -543,12 +581,48 @@ class NarrativeGraphView extends TextFileView {
         } else {
             this._searchCountEl.textContent = String(this._searchHits.length);
         }
+        // Prev/next buttons grey out when there is nothing to cycle through.
+        const noHits = this._searchHits.length === 0;
+        if (this._searchPrevEl) this._searchPrevEl.disabled = noHits;
+        if (this._searchNextEl) this._searchNextEl.disabled = noHits;
     }
 
     _focusSearch() {
         if (!this._searchInputEl) return;
         this._searchInputEl.focus();
         this._searchInputEl.select();
+    }
+
+    // True only while THIS view is the workspace's active view — mirrors
+    // main.js _activeGraphView(): getActiveViewOfType first, activeLeaf
+    // fallback. Headless harnesses (no workspace) count as active.
+    _isActiveView() {
+        const ws = this.app && this.app.workspace;
+        if (!ws) return true;
+        if (typeof ws.getActiveViewOfType === 'function') {
+            const active = ws.getActiveViewOfType(NarrativeGraphView);
+            if (active) return active === this;
+        }
+        const leaf = ws.activeLeaf;
+        if (leaf && leaf.view) return leaf.view === this;
+        if (leaf && !leaf.view) return leaf === this.leaf;
+        return false;
+    }
+
+    // Document-level CAPTURE keydown: Ctrl/Cmd+F focuses + selects the
+    // toolbar search box even when the canvas container has no focus (UAT:
+    // the container-level handler never fired after clicking other UI).
+    // Capture + stopPropagation so the browser/Obsidian default find and the
+    // container handler never see it; gated by _isActiveView() so background
+    // canvas tabs don't hijack the keystroke. Steals focus from other inputs
+    // deliberately (old NarrativeCanvas behavior).
+    _handleDocKeyDown(evt) {
+        if (!(evt.ctrlKey || evt.metaKey)) return;
+        if (evt.key !== 'f' && evt.key !== 'F') return;
+        if (!this._isActiveView()) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        this._focusSearch();
     }
 
     // Enter / Shift+Enter: cycle to the next/previous hit and center the
@@ -1631,10 +1705,9 @@ class NarrativeGraphView extends TextFileView {
             } else if (key === 'v') {
                 evt.preventDefault();
                 this._pasteClipboard();
-            } else if (key === 'f') {
-                evt.preventDefault();
-                this._focusSearch();
             }
+            // Ctrl/Cmd+F lives on the DOCUMENT capture listener
+            // (_handleDocKeyDown) so it works without container focus.
             return; // 其余 mod 组合（Ctrl+S 等）不在画布消费
         }
         if (evt.key === 'Escape') {
