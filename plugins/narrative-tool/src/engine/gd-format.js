@@ -590,17 +590,19 @@ function formatEventNode(node, ctx) {
 
 /**
  * Format an End node (NG-04).
- * Emits nothing — End is an explicit terminal marker that distinguishes an
- * intentional (optionally named) ending from a forgotten dead-end. Without
- * this entry an End node would fall through to the Content fallback and leak
- * its body into the export.
+ * Emits `=> END` — End is an explicit terminal marker that distinguishes an
+ * intentional (optionally named) ending from a forgotten dead-end. The jump
+ * is required, not cosmetic: without it, a branch (or a shared `~ cue`
+ * section) that ends on an End node falls through to whatever line follows
+ * in document order, looping the dialogue instead of terminating it.
+ * The node's title/body are author-side labels and never leak into output.
  *
  * @param {Object} node - The End node
  * @param {Object} ctx - Context object
- * @returns {Array<string>} Always empty
+ * @returns {Array<string>} The terminating jump line
  */
 function formatEndNode(node, ctx) {
-    return [];
+    return [indentedLine(ctx.depth, '=> END')];
 }
 
 // -------------------------------------------------------------------------
