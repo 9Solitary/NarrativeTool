@@ -98,6 +98,26 @@
     stroke-width: 3;
 }
 
+/* Target-end drag handle (toPort): rendered for every edge but shown only
+ * while the edge is selected. The edge layer is pointer-events: none, so the
+ * handle opts back in explicitly (same trick as .ng-edge__hit). */
+.ng-edge-end-handle {
+    display: none;
+    fill: var(--background-primary);
+    stroke: var(--interactive-accent);
+    stroke-width: 2;
+    cursor: crosshair;
+    pointer-events: all;
+}
+
+.ng-edge.is-selected .ng-edge-end-handle {
+    display: block;
+}
+
+.ng-edge-end-handle:hover {
+    fill: var(--interactive-accent);
+}
+
 /* Live ghost bezier while dragging a new link from a port */
 .ng-edge__ghost {
     fill: none;
@@ -174,6 +194,16 @@
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
     padding: 0 4px;
+}
+
+/* Node id badge (n3 …): quiet monospaced tag at the header's right edge */
+.ng-node-id {
+    font-size: var(--font-ui-smaller);
+    font-weight: 400;
+    font-family: var(--font-monospace);
+    color: var(--text-faint);
+    opacity: 0.7;
+    flex: 0 0 auto;
 }
 
 .ng-node__body {
@@ -388,6 +418,45 @@
     height: 20px;
     margin: 0 4px;
     background: var(--background-modifier-border);
+}
+
+/* Ctrl/Cmd+F node search box + hit counter */
+.ng-toolbar__search {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ng-toolbar__search-input {
+    width: 140px;
+    padding: 4px 8px;
+    font-size: var(--font-ui-small);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+}
+
+.ng-toolbar__search-input:focus {
+    border-color: var(--interactive-accent);
+}
+
+.ng-toolbar__search-count {
+    min-width: 32px;
+    text-align: right;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+}
+
+/* Search hit highlight on nodes: warm ring, brighter on the current hit.
+ * Box-shadow (not outline) so it composes with the selection outline. */
+.ng-node.ng-node--search-hit {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-yellow) 55%, transparent);
+}
+
+.ng-node.ng-node--search-current {
+    box-shadow: 0 0 0 3px var(--color-yellow),
+        0 0 14px color-mix(in srgb, var(--color-yellow) 60%, transparent);
 }
 
 /* ---------------------------------------------------------------------------

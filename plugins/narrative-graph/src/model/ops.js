@@ -27,9 +27,7 @@
 const { NODE_TYPES, END_NODE_TYPE, defaultPorts } = require('./constants');
 const { nextNodeId, nextLinkId, nextOptionId } = require('./ids');
 const { flattenTurns } = require('./turns');
-
-// Valid port sides (UAT-6 #1: four-side handles persist into node.ports).
-const PORT_SIDES = Object.freeze(['left', 'right', 'top', 'bottom']);
+const { PORT_SIDES, normalizePort } = require('./ports');
 
 // Type-default titles for new nodes (Dialog's default is treated as
 // "speakerless" by the exporter — see export-engine resolveSpeaker).
@@ -267,6 +265,11 @@ function setChoiceOptions(node, options, allNodes) {
  * created from defaults when absent, mutated in place otherwise so unknown
  * fields survive). Choice sources keep their per-option row anchors, so
  * fromSide is ignored for them. Invalid side strings are ignored.
+ * toSide additionally writes a PER-LINK `toPort` anchor ({side, t}) onto the
+ * link itself — t comes from `sides.toT` when the drop hit-test supplied a
+ * precise border fraction, else 0.5 — so several links into the same node
+ * can end at distinct border points (node.ports.input stays the default for
+ * links without toPort).
  *
  * @returns {Object} The created link
  */
@@ -308,6 +311,15 @@ function addLink(state, from, to, choiceOptionId, sides) {
     if (sides && PORT_SIDES.includes(sides.toSide)) {
         if (!toNode.ports || typeof toNode.ports !== 'object') toNode.ports = defaultPorts();
         toNode.ports.input = { side: sides.toSide, t: 0.5 };
+        // Per-link target anchor (toPort): this link's endpoint keeps the
+        // drop position (sides.toT when the hit-test supplied one, else
+        // 0.5) so multiple links into the same node stop sharing
+        // node.ports.input. The node-level port write above stays the
+        // DEFAULT for links that carry no toPort (backward compatible).
+        link.toPort = {
+            side: sides.toSide,
+            t: Number.isFinite(sides.toT) ? Math.min(1, Math.max(0, sides.toT)) : 0.5
+        };
     }
 
     links.push(link);
@@ -330,6 +342,19 @@ function setLinkRequirements(state, id, text) {
     else delete link.requirements;
 }
 
+/**
+ * Set or clear (null/invalid) a link's per-link target anchor `toPort`
+ * ({side, t}). Touches ONLY the link — node.ports.input is left alone so
+ * other links into the same node keep their current endpoints.
+ */
+function setLinkToPort(state, id, port) {
+    const link = findLink(state, id);
+    if (!link) throw new Error(`setLinkToPort: unknown link '${id}'`);
+    const normalized = normalizePort(port);
+    if (normalized) link.toPort = normalized;
+    else delete link.toPort;
+}
+
 module.exports = {
     DEFAULT_TITLES,
     DEFAULT_NODE_WIDTHS,
@@ -348,5 +373,6 @@ module.exports = {
     setChoiceOptions,
     addLink,
     deleteLink,
-    setLinkRequirements
+    setLinkRequirements,
+    setLinkToPort
 };

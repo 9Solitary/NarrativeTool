@@ -21,7 +21,8 @@ const KNOWN_NODE_FIELDS = Object.freeze([
     'customFields', 'ports', 'frameId', 'width', 'height'
 ]);
 const KNOWN_LINK_FIELDS = Object.freeze([
-    'id', 'from', 'to', 'choiceIndex', 'choiceOptionId', 'label', 'requirements'
+    'id', 'from', 'to', 'choiceIndex', 'choiceOptionId', 'label', 'requirements',
+    'toPort'
 ]);
 
 function isPlainObject(value) {

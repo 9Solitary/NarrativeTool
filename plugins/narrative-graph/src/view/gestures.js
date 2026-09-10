@@ -35,12 +35,14 @@ const TARGET_KINDS = Object.freeze([
     'in-port',  // input-side affordance (drop target only; also End/Choice handles)
     'node',     // node body/header
     'edge',     // edge hit path / label
+    'edge-end-handle', // selected edge's target-end drag handle (toPort)
     'empty'     // bare canvas
 ]);
 
 // Gesture types the view knows how to run.
 const GESTURES = Object.freeze([
-    'none', 'pan', 'marquee', 'node-drag', 'link-drag', 'resize-drag'
+    'none', 'pan', 'marquee', 'node-drag', 'link-drag', 'resize-drag',
+    'end-handle-drag'
 ]);
 
 /**
@@ -63,6 +65,7 @@ function decidePointerDown(input) {
     if (targetKind === 'ui') return { type: 'none' };
     if (targetKind === 'out-port' && button === 0) return { type: 'link-drag' };
     if (targetKind === 'port-handle' && button === 0) return { type: 'link-drag' };
+    if (targetKind === 'edge-end-handle' && button === 0) return { type: 'end-handle-drag' };
     if (targetKind === 'in-port') return { type: 'none' };
 
     // Middle-drag pans from anywhere (over nodes too — fast canvas moves).

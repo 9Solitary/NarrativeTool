@@ -29,6 +29,12 @@
 // (Entry pasted as Content); Ctrl/Cmd+Z / Ctrl+Shift+Z / Ctrl+Y drive a
 // snapshot history (model/history.js, cap 50, committed mutations only —
 // navigation/selection/variables-panel edits create no entries).
+// Node search: Ctrl/Cmd+F focuses the toolbar search box (state lives in
+// view fields, restored across re-renders; matches id/title/body/turns/
+// Choice options, case-insensitive; Enter/Shift+Enter cycle hits and center
+// the camera). Selected edges expose a target-end drag handle that rewrites
+// the link's per-link `toPort` border anchor (model/ports.js, ops
+// setLinkToPort) without touching node.ports.input.
 //
 // UAT ROOT-CAUSE NOTES (the class of bug this file now guards with jsdom
 // tests in tests/narrative-graph-view.test.js):
@@ -88,6 +94,7 @@ const {
     nodesInRect,
     resolveNodeSize,
     nearestSide,
+    sideT,
     oppositeSide,
     applyResize,
     resizeZoneAt,
@@ -128,9 +135,19 @@ class NarrativeGraphView extends TextFileView {
         this._linkDrag = null;
         this._marquee = null;
         this._resize = null;
+        this._endHandleDrag = null;  // toPort drag on a selected edge's end handle
         this._spaceHeld = false;
         this._dragEndedAt = 0;       // timestamp-based trailing-click suppression
         this._cursorEl = null;       // UAT-7: node el currently carrying a resize hover cursor
+
+        // Ctrl/Cmd+F node search state. Lives on the VIEW (not the model —
+        // search is not a document change) and is restored after every full
+        // re-render rebuilds the toolbar.
+        this._searchQuery = '';
+        this._searchHits = [];       // matched node ids, document order
+        this._searchIndex = -1;      // current hit within _searchHits (-1 = none)
+        this._searchInputEl = null;  // toolbar input (rebuilt each render)
+        this._searchCountEl = null;  // hit counter (rebuilt each render)
 
         // M2a variables panel state (NG-06)
         this._varsPanel = null;      // VariablesPanel instance (lazily created)
@@ -190,6 +207,9 @@ class NarrativeGraphView extends TextFileView {
         }
         this._selectedNodeIds.clear();
         this._selectedLinkId = null;
+        this._searchQuery = '';
+        this._searchHits = [];
+        this._searchIndex = -1;
         this._render();
         // M3: 新文件内容 = 新历史（快照基线 = 刚解析的状态）
         this._history = this._state ? historyModel.createHistory() : null;
@@ -209,6 +229,9 @@ class NarrativeGraphView extends TextFileView {
         this._parseFailure = null;
         this._selectedNodeIds.clear();
         this._selectedLinkId = null;
+        this._searchQuery = '';
+        this._searchHits = [];
+        this._searchIndex = -1;
         this._history = null;
         this._historyBaseline = null;
         this._render();
@@ -270,6 +293,8 @@ class NarrativeGraphView extends TextFileView {
         }
         this._editorEl = null;
         this._cursorEl = null; // node els are rebuilt; any hover cursor dies with them
+        this._searchInputEl = null; // rebuilt by _buildToolbar below
+        this._searchCountEl = null;
         this.contentEl.empty();
         this.contentEl.addClass('narrative-graph-view');
 
@@ -321,6 +346,10 @@ class NarrativeGraphView extends TextFileView {
             this._frameEl.appendChild(this._varsPanel.el);
         }
         this._restoreSelection();
+        // Search UI state survives re-renders via view fields: the toolbar
+        // was just rebuilt, so re-apply query/hits/highlights onto the new
+        // DOM (hits recomputed — a mutation may have removed a hit node).
+        this._refreshSearch();
         // Second layout pass: the first render can run before the view is
         // visible (offsetHeight = 0 -> estimated heights -> misaligned
         // edges). Re-measure + re-layout edges once styles/fonts settle.
@@ -415,7 +444,142 @@ class NarrativeGraphView extends TextFileView {
         varsBtn.textContent = '变量表';
         varsBtn.addEventListener('click', () => this._toggleVarsPanel());
         toolbar.appendChild(varsBtn);
+
+        // Ctrl/Cmd+F node search: query input + hit counter. The state lives
+        // in view fields (_searchQuery/_searchHits/_searchIndex); this build
+        // restores the input value after every re-render.
+        const search = document.createElement('span');
+        search.className = 'ng-toolbar__search';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'ng-toolbar__search-input';
+        input.placeholder = '查找节点…';
+        input.value = this._searchQuery;
+        input.addEventListener('input', () => this._onSearchInput(input.value));
+        input.addEventListener('keydown', (evt) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                this._stepSearchHit(evt.shiftKey ? -1 : 1);
+            } else if (evt.key === 'Escape') {
+                // Clear + return focus to the canvas container.
+                input.value = '';
+                this._onSearchInput('');
+                this.contentEl.focus({ preventScroll: true });
+            }
+        });
+        search.appendChild(input);
+        const count = document.createElement('span');
+        count.className = 'ng-toolbar__search-count';
+        search.appendChild(count);
+        toolbar.appendChild(search);
+        this._searchInputEl = input;
+        this._searchCountEl = count;
         this._frameEl.appendChild(toolbar);
+    }
+
+    // -----------------------------------------------------------------------
+    // Node search (Ctrl/Cmd+F) — matches node id / title / body / Dialog
+    // turns / Choice option labels, case-insensitive substring. Purely a
+    // view concern: never touches the model, never records history.
+    // -----------------------------------------------------------------------
+
+    // Lowercased haystack of every searchable string a node carries.
+    _nodeSearchText(node) {
+        const parts = [node.id, node.title, node.body];
+        if (Array.isArray(node.turns)) {
+            for (const turn of node.turns) {
+                if (turn) parts.push(turn.speaker, turn.line);
+            }
+        }
+        if (Array.isArray(node.choiceOptions)) {
+            for (const option of node.choiceOptions) {
+                if (option) parts.push(option.label);
+            }
+        }
+        if (Array.isArray(node.choices)) parts.push(...node.choices);
+        return parts.filter(p => typeof p === 'string' && p.length > 0)
+            .join('\n').toLowerCase();
+    }
+
+    _onSearchInput(value) {
+        this._searchQuery = String(value == null ? '' : value);
+        this._searchIndex = -1;
+        this._refreshSearch();
+    }
+
+    // Recompute hits from the current query + model, clamp the index, then
+    // refresh the highlight classes and the toolbar counter.
+    _refreshSearch() {
+        const query = this._searchQuery.trim().toLowerCase();
+        const nodes = (this._state && this._state.project && this._state.project.nodes) || [];
+        this._searchHits = query
+            ? nodes.filter(n => n && this._nodeSearchText(n).includes(query)).map(n => n.id)
+            : [];
+        if (this._searchHits.length === 0) this._searchIndex = -1;
+        else if (this._searchIndex >= this._searchHits.length) this._searchIndex = 0;
+        this._applySearchHighlight();
+        this._updateSearchCount();
+    }
+
+    _applySearchHighlight() {
+        for (const [, nodeEl] of this._nodeEls) {
+            nodeEl.classList.remove('ng-node--search-hit', 'ng-node--search-current');
+        }
+        const currentId = this._searchIndex >= 0 ? this._searchHits[this._searchIndex] : null;
+        for (const id of this._searchHits) {
+            const nodeEl = this._nodeEls.get(id);
+            if (!nodeEl) continue;
+            nodeEl.classList.add('ng-node--search-hit');
+            if (id === currentId) nodeEl.classList.add('ng-node--search-current');
+        }
+    }
+
+    _updateSearchCount() {
+        if (!this._searchCountEl) return;
+        if (!this._searchQuery.trim()) this._searchCountEl.textContent = '';
+        else if (this._searchHits.length === 0) this._searchCountEl.textContent = '0';
+        else if (this._searchIndex >= 0) {
+            this._searchCountEl.textContent = `${this._searchIndex + 1}/${this._searchHits.length}`;
+        } else {
+            this._searchCountEl.textContent = String(this._searchHits.length);
+        }
+    }
+
+    _focusSearch() {
+        if (!this._searchInputEl) return;
+        this._searchInputEl.focus();
+        this._searchInputEl.select();
+    }
+
+    // Enter / Shift+Enter: cycle to the next/previous hit and center the
+    // camera on it (current zoom preserved).
+    _stepSearchHit(direction) {
+        if (this._searchHits.length === 0) return;
+        const n = this._searchHits.length;
+        this._searchIndex = ((this._searchIndex + direction) % n + n) % n;
+        this._applySearchHighlight();
+        this._updateSearchCount();
+        this._centerOnNode(this._searchHits[this._searchIndex]);
+    }
+
+    _centerOnNode(nodeId) {
+        const node = ops.findNode(this._state, nodeId);
+        if (!node || !this._viewport) return;
+        const measured = this._sizes.get(nodeId);
+        const size = resolveNodeSize(node, measured && measured.height);
+        const view = this._viewport.getView();
+        const vw = this.contentEl.clientWidth > 0 ? this.contentEl.clientWidth : 800;
+        const vh = this.contentEl.clientHeight > 0 ? this.contentEl.clientHeight : 600;
+        const cx = node.x + size.width / 2;
+        const cy = node.y + size.height / 2;
+        this._viewport.setView({
+            x: vw / 2 - cx * view.scale,
+            y: vh / 2 - cy * view.scale,
+            scale: view.scale
+        });
+        // Persist like any other camera move (kind 'search' — not a pan, so
+        // no trailing-click suppression).
+        this._persistView(this._viewport.getView(), 'search');
     }
 
     _createNode(type) {
@@ -659,6 +823,9 @@ class NarrativeGraphView extends TextFileView {
         }
         const nodeEl = target.closest('[data-node-id]');
         if (nodeEl && this._nodeEls.get(nodeEl.dataset.nodeId) === nodeEl) return 'node';
+        // Selected edge's target-end handle sits inside the .ng-edge group —
+        // classify it BEFORE the generic edge so it starts a toPort drag.
+        if (target.closest('.ng-edge-end-handle')) return 'edge-end-handle';
         if (target.closest('.ng-edge')) return 'edge';
         return 'empty';
     }
@@ -695,6 +862,7 @@ class NarrativeGraphView extends TextFileView {
     // their own CSS cursor (child element wins), no special-casing needed.
     _handleHoverMove(evt) {
         if (this._nodeDrag || this._linkDrag || this._marquee || this._resize
+            || this._endHandleDrag
             || !this._state || typeof evt.target.closest !== 'function') {
             this._clearResizeCursor();
             return;
@@ -774,6 +942,11 @@ class NarrativeGraphView extends TextFileView {
                 this._startLinkDrag(evt, portHandleEl || target.closest('.ng-port'));
                 break;
             }
+            case 'end-handle-drag': {
+                const group = target.closest('.ng-edge');
+                if (group) this._startEndHandleDrag(evt, group.getAttribute('data-link-id'));
+                break;
+            }
             case 'resize-drag': {
                 this._startResize(evt, resizeNodeId, resizeZone);
                 break;
@@ -793,6 +966,7 @@ class NarrativeGraphView extends TextFileView {
         else if (this._linkDrag) this._moveLinkDrag(evt);
         else if (this._marquee) this._moveMarquee(evt);
         else if (this._resize) this._moveResize(evt);
+        else if (this._endHandleDrag) this._moveEndHandleDrag(evt);
     }
 
     _handlePointerUp(evt) {
@@ -800,6 +974,7 @@ class NarrativeGraphView extends TextFileView {
         else if (this._linkDrag) this._endLinkDrag(evt);
         else if (this._marquee) this._endMarquee(evt);
         else if (this._resize) this._endResize(evt);
+        else if (this._endHandleDrag) this._endEndHandleDrag(evt);
     }
 
     _cancelDrags() {
@@ -829,6 +1004,18 @@ class NarrativeGraphView extends TextFileView {
                 if (orig.manualSize === undefined) delete node.manualSize;
                 else node.manualSize = orig.manualSize;
                 this._rerenderPreservingCamera();
+            }
+        }
+        if (this._endHandleDrag) {
+            // Escape mid toPort drag: restore the link's pre-drag toPort and
+            // re-layout just this edge (no history entry was recorded).
+            const drag = this._endHandleDrag;
+            this._endHandleDrag = null;
+            const link = this._state && ops.findLink(this._state, drag.linkId);
+            if (link && drag.moved) {
+                if (drag.hadToPort) link.toPort = { ...drag.origToPort };
+                else delete link.toPort;
+                this._relayoutLink(drag.linkId);
             }
         }
     }
@@ -1025,9 +1212,11 @@ class NarrativeGraphView extends TextFileView {
     }
 
     // Drop hit-test; extracted so jsdom tests can stub it (elementFromPoint
-    // is not implemented everywhere). Returns { nodeId, side } — the dropped
-    // handle's side, or the side of the node BODY nearest the drop point
-    // (native .canvas forgiving drop). Entry nodes are not valid targets.
+    // is not implemented everywhere). Returns { nodeId, side, t } — the
+    // dropped handle's side + its border fraction (side handles carry
+    // data-t), or for a node BODY drop the side nearest the drop point plus
+    // the drop point's projection onto that side (native .canvas forgiving
+    // drop). Entry nodes are not valid targets.
     _hitTestLinkTarget(clientX, clientY) {
         const under = typeof document.elementFromPoint === 'function'
             ? document.elementFromPoint(clientX, clientY)
@@ -1037,7 +1226,12 @@ class NarrativeGraphView extends TextFileView {
         if (handle && this._nodeEls.has(handle.dataset.nodeId)) {
             const node = ops.findNode(this._state, handle.dataset.nodeId);
             if (node && node.type !== 'Entry') {
-                return { nodeId: handle.dataset.nodeId, side: handle.dataset.side };
+                const t = parseFloat(handle.dataset.t);
+                return {
+                    nodeId: handle.dataset.nodeId,
+                    side: handle.dataset.side,
+                    t: Number.isFinite(t) ? t : 0.5
+                };
             }
             return null;
         }
@@ -1052,7 +1246,8 @@ class NarrativeGraphView extends TextFileView {
             }, this._viewport.getView());
             const measured = this._sizes.get(node.id);
             const size = resolveNodeSize(node, measured && measured.height);
-            return { nodeId: node.id, side: nearestSide(node, size, world) };
+            const side = nearestSide(node, size, world);
+            return { nodeId: node.id, side, t: sideT(node, size, side, world) };
         }
         return null;
     }
@@ -1072,13 +1267,93 @@ class NarrativeGraphView extends TextFileView {
             // UAT-6 #1: persist the dragged handle sides into node.ports
             // (output on source / input on target, t=0.5) so edges render
             // WYSIWYG and stay NC-compatible. Option-dot drags (Choice)
-            // carry no fromSide — row anchors stay.
+            // carry no fromSide — row anchors stay. The link additionally
+            // records its own toPort anchor with the drop point's precise t
+            // (per-link endpoint; node.ports.input stays the t=0.5 default).
             ops.addLink(this._state, drag.fromId, target.nodeId, drag.optionId,
-                { fromSide: drag.fromSide, toSide: target.side });
+                { fromSide: drag.fromSide, toSide: target.side, toT: target.t });
             this._afterMutation();
         } catch (err) {
             // Self-link / duplicate / port-rule violation: reject quietly.
             console.warn('[Narrative Graph] addLink rejected:', err.message);
+        }
+    }
+
+    // --- end-handle drag (re-anchor a selected edge's TARGET endpoint) ------
+    //
+    // The selected edge renders a small circle at its target end
+    // (.ng-edge-end-handle, renderer buildEdgeGroup). Dragging it snaps the
+    // endpoint onto the TARGET node's border (nearestSide picks the side —
+    // edge-line distances, so points outside the box resolve by overshoot
+    // direction — sideT projects the pointer onto that side) and updates
+    // ONLY link.toPort: node.ports.input is untouched, so other links into
+    // the same node keep their endpoints. History commits once on release
+    // (baseline = pre-gesture committed state, _afterMutation pattern); a
+    // no-move click records nothing.
+
+    // Re-layout one edge in place (shared by the live drag + Escape cancel).
+    _relayoutLink(linkId) {
+        if (!this._state) return;
+        const link = ops.findLink(this._state, linkId);
+        const group = this._edgeEls.get(linkId);
+        if (!link || !group) return;
+        const nodeById = new Map(this._state.project.nodes.map(n => [n.id, n]));
+        const layout = layoutEdge(link, nodeById, this._sizes);
+        if (layout) applyEdgeLayout(group, layout);
+    }
+
+    _startEndHandleDrag(evt, linkId) {
+        const link = ops.findLink(this._state, linkId);
+        if (!link) return;
+        const node = ops.findNode(this._state, link.to);
+        if (!node) return;
+        this._endHandleDrag = {
+            pointerId: evt.pointerId,
+            linkId,
+            nodeId: node.id,
+            // Pre-gesture toPort for Escape cancel (hadToPort distinguishes
+            // "absent" from "present" so cancel restores the exact shape).
+            hadToPort: !!link.toPort,
+            origToPort: link.toPort ? { side: link.toPort.side, t: link.toPort.t } : null,
+            moved: false
+        };
+        this._trackDrag();
+    }
+
+    _moveEndHandleDrag(evt) {
+        const drag = this._endHandleDrag;
+        if (evt.pointerId !== drag.pointerId) return;
+        const link = ops.findLink(this._state, drag.linkId);
+        const node = ops.findNode(this._state, drag.nodeId);
+        if (!link || !node) return;
+        const frameRect = this._frameEl.getBoundingClientRect();
+        const world = screenToWorld({
+            x: evt.clientX - frameRect.left,
+            y: evt.clientY - frameRect.top
+        }, this._viewport.getView());
+        const measured = this._sizes.get(node.id);
+        const size = resolveNodeSize(node, measured && measured.height);
+        const side = nearestSide(node, size, world);
+        const t = sideT(node, size, side, world);
+        link.toPort = { side, t };
+        drag.moved = true;
+        this._relayoutLink(drag.linkId);
+    }
+
+    _endEndHandleDrag(evt) {
+        const drag = this._endHandleDrag;
+        this._endHandleDrag = null;
+        this._untrackDrag();
+        if (!drag || !drag.moved) return; // plain click on the handle
+        this._dragEndedAt = Date.now();
+        try {
+            const link = ops.findLink(this._state, drag.linkId);
+            // Normalize/clamp the live-dragged value through the model op.
+            ops.setLinkToPort(this._state, drag.linkId, link && link.toPort);
+            this._afterMutation();
+            this._setSelection([], drag.linkId);
+        } catch (err) {
+            console.warn('[Narrative Graph] setLinkToPort rejected:', err.message);
         }
     }
 
@@ -1356,6 +1631,9 @@ class NarrativeGraphView extends TextFileView {
             } else if (key === 'v') {
                 evt.preventDefault();
                 this._pasteClipboard();
+            } else if (key === 'f') {
+                evt.preventDefault();
+                this._focusSearch();
             }
             return; // 其余 mod 组合（Ctrl+S 等）不在画布消费
         }

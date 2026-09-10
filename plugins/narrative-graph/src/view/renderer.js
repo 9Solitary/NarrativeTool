@@ -17,12 +17,17 @@
 // Choice output dots (`.ng-port--out` with data-option-id; UAT-8 #2: ROOT
 // children of the node, pinned to measured row offsets by measureNode, so
 // the scrolling body of a fixed-size node never clips them), a fat
-// invisible `.ng-edge__hit` path per edge for click selection, and
+// invisible `.ng-edge__hit` path per edge for click selection, a target-end
+// drag handle per edge (`.ng-edge-end-handle`, shown only while the edge is
+// selected; dragging it rewrites that link's own `toPort` anchor), and
 // layoutEdge()/applyEdgeLayout() so the view can live-update edge geometry
 // during node drags without a full re-render.
+// Node headers also carry a small `.ng-node-id` badge (n3 …).
 // UAT-5/UAT-6 contract: every edge endpoint sits exactly on a rendered
-// handle — layoutEdge() anchors at the stored/default port side/t and
-// buildSideHandles() renders a handle at that same position.
+// handle — layoutEdge() anchors at the stored/default port side/t (a link's
+// optional `toPort {side, t}` overrides the TARGET anchor; links without it
+// render exactly as before) and buildSideHandles() renders a handle at that
+// same position.
 // UAT-6 #5: nodes carrying the `manualSize` marker (written by a resize
 // drag, model/ops.js resizeNode) render fixed-size with `ng-node--fixed`
 // (stored height honored, content scrolls inside the body — UAT-8 #2/#4:
@@ -36,6 +41,7 @@
 // model data onto DOM.
 
 const { NODE_TYPES, DEFAULT_PORTS } = require('../model/constants');
+const { normalizePort } = require('../model/ports');
 const { deriveTurns } = require('../model/turns');
 const {
     DEFAULT_NODE_WIDTH,
@@ -108,6 +114,9 @@ function buildSideHandles(nodeId, ports, nodeType) {
         const dot = el('span', 'ng-port ng-port--side');
         dot.dataset.nodeId = nodeId;
         dot.dataset.side = h.side;
+        // The handle's own t lets a drop hit-test recover the exact border
+        // fraction (stored-port sides sit away from 0.5).
+        dot.dataset.t = String(h.t);
         const f = portFraction(h.side, h.t);
         dot.style.left = `${f.x * 100}%`;
         dot.style.top = `${f.y * 100}%`;
@@ -162,6 +171,9 @@ function buildNodeElement(node) {
     if (!NODE_TYPES.includes(node.type)) {
         header.appendChild(el('span', 'ng-node__badge', `${node.type} (unsupported)`));
     }
+    // Small id badge (n3 …) — sits at the header's right edge (title is
+    // flex: 1), styled faint so it never competes with the title.
+    header.appendChild(el('span', 'ng-node-id', node.id));
     root.appendChild(header);
 
     // Body: per-type content
@@ -263,7 +275,13 @@ function layoutEdge(link, nodeById, sizes) {
         outT = fromSizeEntry.optionT[link.choiceOptionId];
     }
     const p0 = portAnchor(from, fromSize, fromPorts.output && fromPorts.output.side, outT);
-    const p1 = portAnchor(to, toSize, toPorts.input && toPorts.input.side, toPorts.input && toPorts.input.t);
+    // The link's own toPort anchor wins when present (per-link target point,
+    // so several links into one node stop sharing node.ports.input); links
+    // without toPort render exactly as before.
+    const toPort = normalizePort(link.toPort);
+    const p1 = toPort
+        ? portAnchor(to, toSize, toPort.side, toPort.t)
+        : portAnchor(to, toSize, toPorts.input && toPorts.input.side, toPorts.input && toPorts.input.t);
     const { d, mid } = edgePath(p0, p1);
     const { label, requirements } = resolveEdgeLabels(link, nodeById);
     return { d, mid, from: p0, to: p1, label, requirements };
@@ -275,6 +293,11 @@ function applyEdgeLayout(group, layout) {
     const hit = group.querySelector('.ng-edge__hit');
     if (path) path.setAttribute('d', layout.d);
     if (hit) hit.setAttribute('d', layout.d);
+    const handle = group.querySelector('.ng-edge-end-handle');
+    if (handle) {
+        handle.setAttribute('cx', String(layout.to.x));
+        handle.setAttribute('cy', String(layout.to.y));
+    }
     const label = group.querySelector('.ng-edge__label');
     if (label) {
         label.setAttribute('x', String(layout.mid.x));
@@ -292,11 +315,20 @@ function applyEdgeLayout(group, layout) {
 }
 
 // Build one edge group: fat invisible hit path (click selection) under the
-// visible 2px path, plus label/condition texts.
+// visible 2px path, plus label/condition texts and the target-end drag
+// handle (a small circle pinned at the endpoint; CSS shows it only while the
+// edge is selected, and it must opt back into pointer events because the
+// edge layer is pointer-events: none).
 function buildEdgeGroup(link, layout) {
     const group = svgEl('g', { class: 'ng-edge', 'data-link-id': link.id });
     group.appendChild(svgEl('path', { class: 'ng-edge__hit', d: layout.d }));
     group.appendChild(svgEl('path', { class: 'ng-edge__path', d: layout.d }));
+    group.appendChild(svgEl('circle', {
+        class: 'ng-edge-end-handle',
+        cx: layout.to.x,
+        cy: layout.to.y,
+        r: 6
+    }));
 
     const label = svgEl('text', { class: 'ng-edge__label', x: layout.mid.x, y: layout.mid.y - 6, 'text-anchor': 'middle' });
     label.textContent = layout.label;

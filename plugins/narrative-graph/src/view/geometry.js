@@ -199,6 +199,24 @@ function nearestSide(node, size, point) {
     return best;
 }
 
+// Fractional position (0..1, clamped) of a world-space point projected onto
+// a node side: vertical sides vary along y, horizontal along x. Pairs with
+// nearestSide to turn a pointer position into a {side, t} border anchor
+// (link toPort drags, precise drop points).
+function sideT(node, size, side, point) {
+    const clamp01 = (v) => Math.min(1, Math.max(0, v));
+    switch (side) {
+        case 'left':
+        case 'right':
+            return clamp01((point.y - node.y) / Math.max(1, size.height));
+        case 'top':
+        case 'bottom':
+            return clamp01((point.x - node.x) / Math.max(1, size.width));
+        default:
+            return 0.5;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Edge bezier path
 // ---------------------------------------------------------------------------
@@ -462,6 +480,7 @@ module.exports = {
     sideHandles,
     oppositeSide,
     nearestSide,
+    sideT,
     applyResize,
     resizeZoneAt,
     resizeCursor,
