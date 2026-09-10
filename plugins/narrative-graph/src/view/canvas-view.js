@@ -80,6 +80,7 @@ const { decidePointerDown, mergeMarqueeSelection, pointerDownSelection } = requi
 const {
     fitView,
     isValidStoredView,
+    viewIntersectsBounds,
     worldToScreen,
     screenToWorld,
     edgePath,
@@ -298,8 +299,15 @@ class NarrativeGraphView extends TextFileView {
         this._viewport.attach();
 
         // Camera: restore stored ui.view when usable, else fit to content.
+        // Legacy NC files can store a view whose x/y included the old
+        // plugin's scrollboard offset — finite, but it lands every node far
+        // outside the viewport (blank canvas). Only trust a stored view that
+        // actually shows some content; otherwise fit to bounds.
         const stored = this._state.ui && this._state.ui.view;
-        if (isValidStoredView(stored)) {
+        if (isValidStoredView(stored)
+            && (!handles.bounds
+                || viewIntersectsBounds(stored, handles.bounds,
+                    this.contentEl.clientWidth, this.contentEl.clientHeight))) {
             this._viewport.setView(stored);
         } else if (handles.bounds) {
             const view = fitView(handles.bounds, this.contentEl.clientWidth, this.contentEl.clientHeight);

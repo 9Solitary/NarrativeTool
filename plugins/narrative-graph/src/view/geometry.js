@@ -269,6 +269,24 @@ function isValidStoredView(view) {
         && Number.isFinite(view.scale) && view.scale > 0;
 }
 
+// True when the stored camera actually shows some content: legacy NC files
+// can carry a view.x/y that included the old plugin's scrollboard offset, so
+// a finite-but-stale view lands every node tens of thousands of px outside
+// the viewport (blank canvas). When the content rect under `view` does not
+// intersect the viewport rect, the caller should fall back to fitView.
+// Viewport sizes of 0 (hidden first render) use the same 800x600 fallback
+// as fitView so both paths judge against the same assumed frame.
+function viewIntersectsBounds(view, bounds, viewportWidth, viewportHeight) {
+    if (!isValidStoredView(view) || !bounds) return false;
+    const vw = viewportWidth > 0 ? viewportWidth : 800;
+    const vh = viewportHeight > 0 ? viewportHeight : 600;
+    const x0 = bounds.minX * view.scale + view.x;
+    const y0 = bounds.minY * view.scale + view.y;
+    const x1 = bounds.maxX * view.scale + view.x;
+    const y1 = bounds.maxY * view.scale + view.y;
+    return x1 >= 0 && y1 >= 0 && x0 <= vw && y0 <= vh;
+}
+
 // ---------------------------------------------------------------------------
 // Marquee (box selection) rect math — M1b UAT: left-drag on empty canvas
 // ---------------------------------------------------------------------------
@@ -452,6 +470,7 @@ module.exports = {
     nodeBounds,
     fitView,
     isValidStoredView,
+    viewIntersectsBounds,
     normalizeRect,
     nodeRect,
     rectsIntersect,
