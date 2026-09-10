@@ -249,7 +249,7 @@ npm test
 - **部署**：构建后复制 `output/narrative-tool/`（main.js + manifest.json + styles.css）到任意 vault 的 `.obsidian/plugins/` 即可
 - **导出引擎**（`plugins/narrative-tool/src/engine/`）是纯数据转换，零 Obsidian 依赖，可脱离 Obsidian 用 `node --test` 直接测试
 - golden 导出文件作为回归契约，保证导出格式字节一致
-- 项目管理文档见 `.planning/`（ROADMAP / STATE / REQUIREMENTS），交接说明见 `HANDOVER.md`
+- 项目管理文档见 `.planning/`（ROADMAP / STATE / REQUIREMENTS），交接说明见 `doc/HANDOVER.md`
 
 ---
 

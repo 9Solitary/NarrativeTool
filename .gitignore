@@ -18,11 +18,13 @@ tests/
 
 # 本地保留的项目管理/设计文档（远端不跟踪）
 .planning/
-Basic_Dialogue.md
-Characters.md
-HANDOVER.md
-ObsidianNarrativeToolchain.md
-AI工作规范.md
+doc/Basic_Dialogue.md
+doc/Characters.md
+doc/HANDOVER.md
+doc/ObsidianNarrativeToolchain.md
+doc/AI工作规范.md
+doc/提交规范.md
+doc/导出引擎问题排查记录.md
 
 # Deploy artifacts (npm run build)
 output/
