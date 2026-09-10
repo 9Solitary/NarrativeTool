@@ -8,7 +8,7 @@
 
 const { formatNode } = require('./gd-format');
 const { detectMedState, formatMedNode, formatMedHeader, formatMutationsForEffects, formatLinkConditionalBlocks } = require('./med-format');
-const { analyzeGraph } = require('./graph-analysis');
+const { analyzeGraph, findBranchConvergence } = require('./graph-analysis');
 
 // -------------------------------------------------------------------------
 // Character name resolution
@@ -122,66 +122,10 @@ function topologicalSort(nodes, links, startId) {
 
 // -------------------------------------------------------------------------
 // Conditional-group convergence (inline fall-through)
+//
+// findBranchConvergence lives in graph-analysis.js (shared between the
+// static Pass 2.5 exclusion and the walk-time emission).
 // -------------------------------------------------------------------------
-
-/**
- * Detect whether every arm of a conditional-link group re-converges on one
- * shared node through simple linear chains (no Choices, no nested branches,
- * no merge/loop targets in between). Returns the convergence node id, or
- * null when the pattern does not apply and the caller should fall back to
- * the legacy block walk.
- *
- * @param {Array<Object>} children - Outgoing links of the branching node
- * @param {Map<string, Array<Object>>} adjacency - from -> link[]
- * @param {Map<string, Object>} nodeMap - id -> node
- * @param {Object} graph - analyzeGraph() result
- * @returns {string|null} Convergence node id
- */
-function findBranchConvergence(children, adjacency, nodeMap, graph) {
-    if (children.length < 2) return null;
-    const chains = [];
-    for (const link of children) {
-        const chain = [];
-        let cur = link.to;
-        while (true) {
-            // Arms terminating in a merge/loop jump end there; they take no
-            // part in fall-through convergence.
-            if (graph.merges.has(cur) || graph.loops.has(cur)) break;
-            const node = nodeMap.get(cur);
-            // A Choice (or unknown node) ends the simple chain.
-            if (!node || node.type === 'Choice') break;
-            if (chain.includes(cur)) break; // cycle safety
-            chain.push(cur);
-            const out = (adjacency.get(cur) || []).filter(l => !graph.loopEdges.has(l.id));
-            if (out.length !== 1) break; // dead end or nested branch
-            cur = out[0].to;
-        }
-        if (chain.length === 0) return null;
-        chains.push(chain);
-    }
-    let best = null;
-    let bestScore = Infinity;
-    for (let i = 0; i < chains[0].length; i++) {
-        const id = chains[0][i];
-        let maxIdx = i;
-        let common = true;
-        for (let c = 1; c < chains.length; c++) {
-            const idx = chains[c].indexOf(id);
-            if (idx === -1) { common = false; break; }
-            if (idx > maxIdx) maxIdx = idx;
-        }
-        if (common && maxIdx < bestScore) { best = id; bestScore = maxIdx; }
-    }
-    if (!best) return null;
-    // A merge-registered target is already handled by jump-to-section.
-    if (graph.merges.has(best)) return null;
-    // An arm starting directly at the convergence node would emit an empty
-    // if/else arm — bail to the legacy walk.
-    for (const chain of chains) {
-        if (chain[0] === best) return null;
-    }
-    return best;
-}
 
 /**
  * Check whether a branch link leads into a simple chain that ends at a node
@@ -357,15 +301,18 @@ function exportEngine(ncanvasJson, config) {
     // existing .dialogue output stays byte-identical).
     const graph = analyzeGraph(nodes, links, startNode.id);
     // Warnings are collected locally and flushed to cfg.warnings at the end
-    // of the walk: convergence points resolved by inline fall-through (see
-    // walkChildLinks) make their "ambiguous convergence" warnings obsolete,
-    // so they are filtered out before the flush.
+    // of the walk.
     const warnings = [...graph.warnings];
-    const resolvedConvergences = new Set();
 
     // FEAT-02: ordered record of merge points already jumped to during the
     // walk; their shared subtrees are emitted once after the main walk.
     const emittedMerges = [];
+
+    // Loop targets (FEAT-01) get the same section treatment: every entry
+    // into a loop-target Choice emits `=> cue`; the Choice itself is emitted
+    // once as a top-level section after the main walk. This keeps `~ cue`
+    // titles unique and at column 0 no matter how many paths reach the loop.
+    const emittedLoops = [];
 
     // MED auto-detection (from RESEARCH.md Pattern 5; NG-06: global variables
     // with flag_/res_ keys also count toward detection)
@@ -426,6 +373,7 @@ function exportEngine(ncanvasJson, config) {
         links: links,
         graph: graph,
         emittedMerges: emittedMerges,
+        emittedLoops: emittedLoops,
         warnings: warnings,
         charactersArr: mergedCharacters,
         variablesObj: variables,
@@ -473,7 +421,6 @@ function exportEngine(ncanvasJson, config) {
                     ? findBranchConvergence(children, adjacency, nodeMap, graph)
                     : null;
                 if (convergence) {
-                    resolvedConvergences.add(convergence);
                     stopAtId = convergence;
                 }
                 const blockLines = formatLinkConditionalBlocks(children, depth,
@@ -508,7 +455,13 @@ function exportEngine(ncanvasJson, config) {
         // Inline fall-through: the arm stops at the convergence node; the
         // shared trunk is emitted once after the if/else block closes.
         if (stopAtId && link.to === stopAtId) return;
-        if (graph.loopEdges.has(link.id)) {
+        // Loop target: back-edges (loopEdges) and forward entries alike emit
+        // a jump; the loop-target Choice is emitted once as a top-level
+        // section after the main walk (unique, non-nested `~ cue` titles).
+        if (graph.loopEdges.has(link.id) || graph.loops.has(link.to)) {
+            if (graph.loops.has(link.to) && !emittedLoops.includes(link.to)) {
+                emittedLoops.push(link.to);
+            }
             lines.push('\t'.repeat(depth) + '=> ' + graph.loops.get(link.to));
             return;
         }
@@ -550,7 +503,9 @@ function exportEngine(ncanvasJson, config) {
             // Per-option MED mutations are emitted inside formatChoiceNode's subtree walk.
             // Do NOT call formatMedNode on the Choice node itself here — mutations and
             // conditional blocks are per-option scoped.
-            const result = formatNode(node, nodeCtx);
+            // walkVisited seeds the path-carried visited set so cycles that
+            // cross Choice boundaries terminate inside formatChoiceNode.
+            const result = formatNode(node, { ...nodeCtx, walkVisited: new Set([node.id]) });
             lines.push(...result);
         } else if (node.type === 'Entry') {
             // Entry nodes emit cue + body, then walk children at depth 0
@@ -589,25 +544,36 @@ function exportEngine(ncanvasJson, config) {
     }
     walkNode(startNode.id, 0);
 
-    // ----- FEAT-02: emit shared merge sections (deduplicated content) -----
-    // Index-based loop: walking a shared section may record further nested
-    // merges, which are appended here and emitted after their parents.
-    for (let i = 0; i < emittedMerges.length; i++) {
-        const mergeNode = nodeMap.get(emittedMerges[i]);
-        if (!mergeNode) continue;
-        // A Marker merge point emits its own `~ cue` header via formatNode;
-        // other node types need the generated section header first.
-        if (mergeNode.type !== 'Marker') {
-            lines.push('~ ' + graph.merges.get(emittedMerges[i]));
+    // ----- FEAT-01/02: emit shared loop + merge sections (deduplicated content) -----
+    // Interleaved drain: walking a shared section may record further nested
+    // loops/merges, which are appended to the queues and emitted after the
+    // sections that referenced them.
+    let mergeIdx = 0;
+    let loopIdx = 0;
+    while (mergeIdx < emittedMerges.length || loopIdx < emittedLoops.length) {
+        if (mergeIdx < emittedMerges.length) {
+            const mergeNode = nodeMap.get(emittedMerges[mergeIdx++]);
+            if (mergeNode) {
+                // A Marker merge point emits its own `~ cue` header via formatNode;
+                // other node types need the generated section header first.
+                if (mergeNode.type !== 'Marker') {
+                    lines.push('~ ' + graph.merges.get(mergeNode.id));
+                }
+                walkNode(mergeNode.id, 0);
+            }
         }
-        walkNode(mergeNode.id, 0);
+        if (loopIdx < emittedLoops.length) {
+            const loopNode = nodeMap.get(emittedLoops[loopIdx++]);
+            if (loopNode) {
+                lines.push('~ ' + graph.loops.get(loopNode.id));
+                walkNode(loopNode.id, 0);
+            }
+        }
     }
 
-    // Flush collected warnings to the caller, dropping "ambiguous
-    // convergence" warnings for nodes the walk resolved via inline
-    // fall-through (they are no longer truncated or duplicated).
-    const finalWarnings = warnings.filter(w =>
-        ![...resolvedConvergences].some(id => w.includes("'" + id + "'")));
+    // Flush collected warnings to the caller. Identical warnings raised from
+    // independent subtree walks are deduped.
+    const finalWarnings = [...new Set(warnings)];
     if (Array.isArray(cfg.warnings)) {
         cfg.warnings.push(...finalWarnings);
     }

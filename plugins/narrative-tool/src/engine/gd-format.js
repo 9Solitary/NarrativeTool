@@ -317,12 +317,9 @@ function formatContentNode(node, ctx) {
 function formatChoiceNode(node, ctx) {
     const lines = [];
 
-    // FEAT-01 (D2): a Choice that is the target of a user-drawn loop gets a
-    // `~ cue` title line BEFORE its body/options, so looping branches can
-    // jump back with `=> cue` and re-enter the whole choice.
-    if (ctx.graph && ctx.graph.loops.has(node.id)) {
-        lines.push(indentedLine(ctx.depth, '~ ' + ctx.graph.loops.get(node.id)));
-    }
+    // FEAT-01 (D2): a loop-target Choice is emitted once as a top-level
+    // section by the engine's end-pass (its `~ cue` header is emitted there);
+    // every entry into it — forward or back-edge — is a `=> cue` jump.
 
     // Emit choice body (the question/statement) if present.
     // A Choice with a bound cast character speaks its body as a prompt line.
@@ -375,6 +372,16 @@ function formatChoiceNode(node, ctx) {
      * @returns {Array<string>} Collected lines for this subtree
      */
     function walkSubtree(startNodeId, walkDepth, walkVisited) {
+        // FEAT-01: loop target — jump to the loop section instead of
+        // re-expanding the Choice; the section is emitted once at the end.
+        // Checked before walkVisited so every incoming branch emits its jump.
+        if (ctx.graph && ctx.graph.loops.has(startNodeId)) {
+            if (ctx.emittedLoops && !ctx.emittedLoops.includes(startNodeId)) {
+                ctx.emittedLoops.push(startNodeId);
+            }
+            return [indentedLine(walkDepth, '=> ' + ctx.graph.loops.get(startNodeId))];
+        }
+
         // FEAT-02: convergence point — jump to the shared section instead of
         // duplicating the subtree; the shared section is emitted once at the
         // end of the export. Checked before walkVisited so every incoming
@@ -386,14 +393,25 @@ function formatChoiceNode(node, ctx) {
             return [indentedLine(walkDepth, '=> ' + ctx.graph.merges.get(startNodeId))];
         }
 
-        if (walkVisited.has(startNodeId)) return [];
+        if (walkVisited.has(startNodeId)) {
+            // Revisit on the current path means a cycle analyzeGraph declined
+            // to register (loop target is not a Choice). Terminate and warn
+            // instead of recursing until the stack overflows.
+            if (Array.isArray(ctx.warnings)) {
+                ctx.warnings.push(
+                    `Cycle through node '${startNodeId}' cannot be represented; ` +
+                    `the branch is truncated here (draw the loop back to a Choice node instead).`
+                );
+            }
+            return [];
+        }
         walkVisited.add(startNodeId);
 
         const subNode = ctx.nodeMap.get(startNodeId);
         if (!subNode) return [];
 
         const result = [];
-        const subCtx = { ...ctx, depth: walkDepth, formatNode: ctx.formatNode };
+        const subCtx = { ...ctx, depth: walkDepth, formatNode: ctx.formatNode, walkVisited: walkVisited };
 
         // Format this node
         const subLines = ctx.formatNode(subNode, subCtx);
@@ -453,8 +471,23 @@ function formatChoiceNode(node, ctx) {
                 l => l.choiceOptionId === opt.id
             );
             if (targetLink && targetLink.to) {
-                const subVisited = new Set();
-                const subtreeLines = walkSubtree(targetLink.to, childDepth, subVisited);
+                let subtreeLines;
+                if (ctx.graph && ctx.graph.loopEdges.has(targetLink.id)) {
+                    // FEAT-01: the option link is itself a loop back-edge —
+                    // emit the jump line, never recurse into the loop target
+                    // (walkSubtree only checks loopEdges for non-Choice nodes'
+                    // outgoing links; Choice option links were unguarded).
+                    if (ctx.emittedLoops && !ctx.emittedLoops.includes(targetLink.to)) {
+                        ctx.emittedLoops.push(targetLink.to);
+                    }
+                    subtreeLines = [indentedLine(childDepth, '=> ' + ctx.graph.loops.get(targetLink.to))];
+                } else {
+                    // Seed with the current path so cycles crossing Choice
+                    // boundaries terminate; siblings still get independent sets.
+                    const subVisited = new Set(ctx.walkVisited || []);
+                    subVisited.add(node.id);
+                    subtreeLines = walkSubtree(targetLink.to, childDepth, subVisited);
+                }
 
                 // Emit MED mutations inline under the target content (MED-02, MED-03)
                 // Mutations come from choice option effects, not the target node itself.
@@ -490,9 +523,18 @@ function formatChoiceNode(node, ctx) {
                 l => l.choiceIndex === i || (l.choiceIndex === undefined && links.indexOf(l) === i)
             );
             if (targetLink && targetLink.to) {
-                const subVisited = new Set();
-                const subtreeLines = walkSubtree(targetLink.to, childDepth, subVisited);
-                lines.push(...subtreeLines);
+                if (ctx.graph && ctx.graph.loopEdges.has(targetLink.id)) {
+                    // Loop back-edge from the option itself: jump, don't recurse.
+                    if (ctx.emittedLoops && !ctx.emittedLoops.includes(targetLink.to)) {
+                        ctx.emittedLoops.push(targetLink.to);
+                    }
+                    lines.push(indentedLine(childDepth, '=> ' + ctx.graph.loops.get(targetLink.to)));
+                } else {
+                    const subVisited = new Set(ctx.walkVisited || []);
+                    subVisited.add(node.id);
+                    const subtreeLines = walkSubtree(targetLink.to, childDepth, subVisited);
+                    lines.push(...subtreeLines);
+                }
             }
         }
     }

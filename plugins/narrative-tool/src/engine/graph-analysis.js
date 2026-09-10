@@ -11,9 +11,11 @@
 //              Cue naming is hybrid (D3): a Marker at the merge point names
 //              the cue; otherwise the engine generates merge_01, merge_02...
 //
-// Ambiguity rule: when a merged subtree contains a Choice, or the merge
-// point is itself a Choice / loop target, content is NOT deduplicated —
-// the engine keeps the current duplicate output and records a warning.
+// Merge points are registered regardless of whether the merge point or its
+// subtree contains a Choice: the shared section hoists the whole branching
+// structure to the top level, so content is always deduplicated. The only
+// exclusion is a conditional-link group whose arms re-converge (inline
+// fall-through, Pass 2.5) — those keep their inline if/else output.
 //
 // Regression contract: for acyclic graphs without convergence this returns
 // all-empty results and the main walk is byte-identical to the pre-Phase-6
@@ -22,6 +24,69 @@
 // Pure module: no obsidian imports, no DOM access (engine-purity guard).
 
 const { slugifyCueName } = require('./gd-format');
+
+/**
+ * Detect whether every arm of a conditional-link group re-converges on one
+ * shared node through simple linear chains (no Choices, no nested branches,
+ * no merge/loop targets in between). Returns the convergence node id, or
+ * null when the pattern does not apply and the caller should fall back to
+ * the legacy block walk.
+ *
+ * Used twice: statically in analyzeGraph (Pass 2.5, to keep such convergence
+ * points out of the merge registry) and at walk time in export-engine (to
+ * drive the inline fall-through emission).
+ *
+ * @param {Array<Object>} children - Outgoing links of the branching node
+ * @param {Map<string, Array<Object>>} adjacency - from -> link[]
+ * @param {Map<string, Object>} nodeMap - id -> node
+ * @param {Object} graph - { loops, loopEdges, merges } (partially built during analysis)
+ * @returns {string|null} Convergence node id
+ */
+function findBranchConvergence(children, adjacency, nodeMap, graph) {
+    if (children.length < 2) return null;
+    const chains = [];
+    for (const link of children) {
+        const chain = [];
+        let cur = link.to;
+        while (true) {
+            // Arms terminating in a merge/loop jump end there; they take no
+            // part in fall-through convergence.
+            if (graph.merges.has(cur) || graph.loops.has(cur)) break;
+            const node = nodeMap.get(cur);
+            // A Choice (or unknown node) ends the simple chain.
+            if (!node || node.type === 'Choice') break;
+            if (chain.includes(cur)) break; // cycle safety
+            chain.push(cur);
+            const out = (adjacency.get(cur) || []).filter(l => !graph.loopEdges.has(l.id));
+            if (out.length !== 1) break; // dead end or nested branch
+            cur = out[0].to;
+        }
+        if (chain.length === 0) return null;
+        chains.push(chain);
+    }
+    let best = null;
+    let bestScore = Infinity;
+    for (let i = 0; i < chains[0].length; i++) {
+        const id = chains[0][i];
+        let maxIdx = i;
+        let common = true;
+        for (let c = 1; c < chains.length; c++) {
+            const idx = chains[c].indexOf(id);
+            if (idx === -1) { common = false; break; }
+            if (idx > maxIdx) maxIdx = idx;
+        }
+        if (common && maxIdx < bestScore) { best = id; bestScore = maxIdx; }
+    }
+    if (!best) return null;
+    // A merge-registered target is already handled by jump-to-section.
+    if (graph.merges.has(best)) return null;
+    // An arm starting directly at the convergence node would emit an empty
+    // if/else arm — bail to the legacy walk.
+    for (const chain of chains) {
+        if (chain[0] === best) return null;
+    }
+    return best;
+}
 
 /**
  * Analyze the dialogue graph for loops and merge points.
@@ -41,6 +106,7 @@ function analyzeGraph(nodes, links, startId) {
     const loopEdges = new Set();
     const merges = new Map();
     const warnings = [];
+    const deferredCycleWarnings = [];
 
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
@@ -100,10 +166,10 @@ function analyzeGraph(nodes, links, startId) {
                 }
                 loopEdges.add(link.id);
             } else {
-                warnings.push(
-                    `Cycle to non-Choice node '${link.to}' is not supported; ` +
-                    `the edge is ignored (draw the loop back to a Choice node instead).`
-                );
+                // Defer the warning: a non-Choice cycle target with in-degree
+                // >= 2 becomes a merge section in Pass 2, which represents
+                // the cycle faithfully — only warn when it does not.
+                deferredCycleWarnings.push(link.to);
             }
             continue;
         }
@@ -115,6 +181,28 @@ function analyzeGraph(nodes, links, startId) {
         }
         // Cross/forward edge to an already-visited node: candidate convergence,
         // handled by the in-degree pass below.
+    }
+
+    // ----- Pass 2.5: conditional-group inline fall-through exclusions -----
+    // A node whose outgoing links carry requirements (at least one) is a
+    // conditional (MED) group; when its arms re-converge on one shared node,
+    // the walk emits that convergence inline (fall-through) instead of a
+    // merge jump. Such convergence points are excluded from the merge
+    // registry below — but only when their subtree contains a Choice.
+    // Choice-free convergence subtrees were always merge-registered (the
+    // walk-time convergence check bails on registered merges), so excluding
+    // them would change output.
+    const inlineConvergences = new Set();
+    const analysisGraph = { loops, loopEdges, merges: new Map() };
+    for (const id of visited) {
+        const children = adjacency.get(id) || [];
+        if (children.length < 2) continue;
+        if (!children.some(l =>
+            l && typeof l.requirements === 'string' && l.requirements.trim().length > 0)) continue;
+        const conv = findBranchConvergence(children, adjacency, nodeMap, analysisGraph);
+        if (conv && subtreeContainsChoice(conv, adjacency, nodeMap, loopEdges)) {
+            inlineConvergences.add(conv);
+        }
     }
 
     // ----- Pass 2: convergence detection (in-degree >= 2, loop edges excluded) -----
@@ -130,28 +218,10 @@ function analyzeGraph(nodes, links, startId) {
         if (degree < 2) continue;
         if (nodeId === startId) continue;
         if (loops.has(nodeId)) continue; // loop target — not a merge
+        if (inlineConvergences.has(nodeId)) continue; // inline fall-through — not a merge
 
         const node = nodeMap.get(nodeId);
         if (!node) continue;
-
-        // Ambiguity: the merge point is itself a Choice — deduplicating would
-        // require hoisting a branching structure into the shared section.
-        if (node.type === 'Choice') {
-            warnings.push(
-                `Ambiguous convergence at Choice node '${nodeId}'; ` +
-                `content is duplicated instead of deduplicated.`
-            );
-            continue;
-        }
-
-        // Ambiguity: merged subtree contains a Choice somewhere downstream.
-        if (subtreeContainsChoice(nodeId, adjacency, nodeMap, loopEdges)) {
-            warnings.push(
-                `Ambiguous convergence at node '${nodeId}' (subtree contains a Choice); ` +
-                `content is duplicated instead of deduplicated.`
-            );
-            continue;
-        }
 
         // D3 hybrid naming: a Marker at the merge point names the cue.
         if (node.type === 'Marker') {
@@ -163,6 +233,17 @@ function analyzeGraph(nodes, links, startId) {
             mergeCounter++;
             merges.set(nodeId, uniqueCue('merge_' + String(mergeCounter).padStart(2, '0')));
         }
+    }
+
+    // Flush deferred cycle warnings: a non-Choice cycle target registered as
+    // a merge is faithfully represented (the section jumps back to itself);
+    // anything else is genuinely unsupported and the walk truncates it.
+    for (const to of deferredCycleWarnings) {
+        if (merges.has(to)) continue;
+        warnings.push(
+            `Cycle to non-Choice node '${to}' is not supported; ` +
+            `the edge is ignored (draw the loop back to a Choice node instead).`
+        );
     }
 
     return { loops, loopEdges, merges, warnings };
@@ -197,5 +278,6 @@ function subtreeContainsChoice(nodeId, adjacency, nodeMap, loopEdges) {
 }
 
 module.exports = {
-    analyzeGraph
+    analyzeGraph,
+    findBranchConvergence
 };
