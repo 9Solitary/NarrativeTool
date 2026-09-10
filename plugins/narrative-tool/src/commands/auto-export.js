@@ -3,8 +3,14 @@
 // Listens to vault.on('modify') for .ncanvas file changes and automatically
 // exports the corresponding .dialogue file after a 2-second debounce.
 //
+// Red-lint gating: when the export engine reports error-level diagnostics
+// ({ level: 'error' }) for a file, the .dialogue write is SKIPPED and the
+// result carries blocked:true + the entries — auto-export is effectively
+// disabled for that file until the red diagnostics are fixed, at which point
+// the next save exports normally again (no manual toggle).
+//
 // Provides three exported functions:
-//   - exportSingleFile(app, file, exportPath, medEnabled) → { success, error?, path? }
+//   - exportSingleFile(app, file, exportPath, medEnabled) → { success, error?, path?, blocked?, entries? }
 //   - setupAutoExport(plugin, onExported) → void
 //   - teardownAutoExport(plugin) → void
 //
@@ -16,7 +22,7 @@
 // honors exportPath via writeDialogueFile (previously wrote alongside the
 // source).
 
-const { exportEngine } = require('../engine/export-engine');
+const { exportEngine, countWarningLevels } = require('../engine/export-engine');
 const { writeDialogueFile } = require('./paths');
 const { loadSharedCharacters } = require('./shared-characters');
 const { loadSharedVariables } = require('./shared-variables');
@@ -31,13 +37,16 @@ const { loadSharedVariables } = require('./shared-variables');
  * Reads the file, parses JSON, runs through exportEngine, writes output
  * via writeDialogueFile (honors exportPath).
  * Gracefully handles JSON parse errors and exportEngine exceptions.
+ * When the engine reports error-level diagnostics the write is skipped
+ * (blocked:true) — see the header comment on red-lint gating.
  *
  * @param {Object} app - Obsidian App instance
  * @param {Object} file - TFile for the .ncanvas file (must have .path, .basename, .extension)
  * @param {string} exportPath - Export destination: '' (alongside source), absolute (fs), or vault-relative
  * @param {boolean} medEnabled - Passed through to exportEngine config
  * @param {string} [variablesPath] - Global variables table path (NG-06); undefined = default
- * @returns {Promise<{ success: boolean, error?: string, path?: string }>}
+ * @returns {Promise<{ success: boolean, error?: string, path?: string,
+ *   blocked?: boolean, entries?: Array<{level: string, text: string}> }>}
  */
 async function exportSingleFile(app, file, exportPath, medEnabled, variablesPath) {
     try {
@@ -64,9 +73,21 @@ async function exportSingleFile(app, file, exportPath, medEnabled, variablesPath
             externalVariables: await loadSharedVariables(app, variablesPath),
             warnings: warnings
         });
-        for (const w of warnings) console.warn(`[Narrative Tool] 导出警告 (${file.path}):`, w);
+        for (const w of warnings) console.warn(`[Narrative Tool] 导出警告 (${file.path}):`, w.text);
 
-        // 4. Write through the shared path module (honors exportPath)
+        // 4. Red-lint gate: error-level diagnostics block the auto-export
+        //    write until fixed (manual export stays available).
+        const { errors: errorCount } = countWarningLevels(warnings);
+        if (errorCount > 0) {
+            return {
+                success: false,
+                blocked: true,
+                error: `${errorCount} 条导出错误`,
+                entries: warnings.map(w => ({ level: w.level, text: `[${file.path}] ${w.text}` }))
+            };
+        }
+
+        // 5. Write through the shared path module (honors exportPath)
         const result = await writeDialogueFile(
             app,
             exportPath,
@@ -75,7 +96,11 @@ async function exportSingleFile(app, file, exportPath, medEnabled, variablesPath
             dialogueText
         );
 
-        return { success: true, path: result.path };
+        return {
+            success: true,
+            path: result.path,
+            entries: warnings.map(w => ({ level: w.level, text: `[${file.path}] ${w.text}` }))
+        };
     } catch (err) {
         return { success: false, error: err.message };
     }

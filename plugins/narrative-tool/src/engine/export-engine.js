@@ -407,10 +407,12 @@ function exportEngine(ncanvasJson, config) {
                 // Non-exhaustive condition group: no unconditional link to
                 // fall back on, so unmatched states produce no output.
                 if (children.every(hasReq)) {
-                    warnings.push(
-                        `Conditional group at '${nodeId}' has no unconditional else link; ` +
-                        `unmatched states produce no output.`
-                    );
+                    warnings.push({
+                        level: 'warn',
+                        text:
+                            `Conditional group at '${nodeId}' has no unconditional else link; ` +
+                            `unmatched states produce no output.`
+                    });
                 }
                 // Diamond detection: when every arm of the group re-converges
                 // on one shared node through simple linear chains, close the
@@ -479,10 +481,12 @@ function exportEngine(ncanvasJson, config) {
         // pre-pass declined to register). Surface it instead of dropping
         // the rest of the branch without a trace.
         if (visited.has(link.to)) {
-            warnings.push(
-                `Link '${link.id}' -> '${link.to}' skipped: target already emitted ` +
-                `on another path; the remainder of this branch is unreachable in the export.`
-            );
+            warnings.push({
+                level: 'error',
+                text:
+                    `Link '${link.id}' -> '${link.to}' skipped: target already emitted ` +
+                    `on another path; the remainder of this branch is unreachable in the export.`
+            });
             return;
         }
         walkNode(link.to, depth);
@@ -572,13 +576,38 @@ function exportEngine(ncanvasJson, config) {
     }
 
     // Flush collected warnings to the caller. Identical warnings raised from
-    // independent subtree walks are deduped.
-    const finalWarnings = [...new Set(warnings)];
+    // independent subtree walks are deduped (entries are { level, text } —
+    // identity is the level+text pair).
+    const seenWarnings = new Set();
+    const finalWarnings = [];
+    for (const w of warnings) {
+        const key = (w && w.level ? w.level : 'warn') + '\n' + (w && w.text ? w.text : String(w));
+        if (seenWarnings.has(key)) continue;
+        seenWarnings.add(key);
+        finalWarnings.push(w);
+    }
     if (Array.isArray(cfg.warnings)) {
         cfg.warnings.push(...finalWarnings);
     }
 
     return lines.join('\n') + '\n';
+}
+
+/**
+ * Split a warnings array ({ level, text } entries) into error/warn counts.
+ * Red (error) entries block auto-export and stick in the status bar.
+ *
+ * @param {Array<{level: string, text: string}>} warnings
+ * @returns {{ errors: number, warns: number }}
+ */
+function countWarningLevels(warnings) {
+    let errors = 0;
+    let warns = 0;
+    for (const w of warnings || []) {
+        if (w && w.level === 'error') errors++;
+        else warns++;
+    }
+    return { errors, warns };
 }
 
 // -------------------------------------------------------------------------
@@ -588,5 +617,6 @@ function exportEngine(ncanvasJson, config) {
 module.exports = {
     exportEngine,
     topologicalSort,
-    resolveCharacter
+    resolveCharacter,
+    countWarningLevels
 };

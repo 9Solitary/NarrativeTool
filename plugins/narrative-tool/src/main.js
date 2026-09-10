@@ -29,6 +29,7 @@ const { exportAllDialogues } = require('./commands/batch-export');
 const { setupAutoExport, teardownAutoExport } = require('./commands/auto-export');
 const { validateReferences } = require('./commands/reference-validator');
 const { exportCurrentDialogue } = require('./commands/export-current');
+const { countWarningLevels } = require('./engine/export-engine');
 const { createCharacterMd, createLocationMd, createQuestMd, createItemMd } = require('./flow/entity-templates');
 const { generateNodeId, createCanvas, addNodeToCanvas, addDialogueNodeToCanvas } = require('./flow/canvas-utils');
 const { openDialogueFile, openFlowCanvas, openFileInSplit, findFlowCanvasForDialogue } = require('./flow/navigation');
@@ -136,6 +137,18 @@ module.exports = class NarrativeToolPlugin extends Plugin {
         setupAutoExport(this, (results) => {
             const successCount = results.filter(r => r.success).length;
             const failCount = results.filter(r => !r.success).length;
+            // Red-lint gating: a blocked file carries error-level diagnostics;
+            // the status bar sticks in the diagnostic state until they are
+            // fixed (no auto-revert), and auto-export skipped that file.
+            const blocked = results.filter(r => r.blocked);
+            const entries = results.flatMap(r => r.entries || []);
+            this.statusBar.setDiagnostics(entries);
+            const { errors: lintErrors, warns: lintWarns } = countWarningLevels(entries);
+            if (blocked.length > 0) {
+                this.statusBar.setState('diagnostic', { errors: lintErrors, warns: lintWarns });
+                notify(`自动导出已暂停：${blocked[0].error}（点击状态栏查看详情，修复后自动恢复）`, 'error');
+                return;
+            }
             if (successCount > 0 && failCount === 0) {
                 this.statusBar.setState('success', { exported: successCount, failed: 0 });
                 // Auto-revert to pending after 5 seconds
@@ -306,8 +319,19 @@ module.exports = class NarrativeToolPlugin extends Plugin {
                 this.statusBar.setState('success', result);
                 notify(`批量导出完成：${result.exported} 个成功`);
             }
+            // Red lint diagnostics stick in the status bar (no auto-revert);
+            // yellow ones are reported by count only.
+            this.statusBar.setDiagnostics(result.lintEntries || []);
+            if (result.lintErrors > 0) {
+                this.statusBar.setState('diagnostic', {
+                    errors: result.lintErrors,
+                    warns: result.warnings
+                });
+                notify(`批量导出产生 ${result.lintErrors} 条错误（点击状态栏查看详情）`, 'error');
+                return;
+            }
             if (result.warnings > 0) {
-                notify(`批量导出产生 ${result.warnings} 条警告（详见控制台）`);
+                notify(`批量导出产生 ${result.warnings} 条警告（点击状态栏查看详情）`);
             }
 
             // Auto-revert to pending after 5 seconds

@@ -11,7 +11,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { exportEngine } = require('../engine/export-engine');
+const { exportEngine, countWarningLevels } = require('../engine/export-engine');
 const { isAbsoluteExportPath, writeDialogueFile } = require('./paths');
 const { loadSharedCharacters } = require('./shared-characters');
 const { loadSharedVariables } = require('./shared-variables');
@@ -42,7 +42,8 @@ function normalizePath(p) {
  * @param {boolean} medEnabled - Whether to include MED state extension syntax
  * @param {Function} [onProgress] - Optional (count, total) progress callback (UX-03)
  * @param {string} [variablesPath] - Global variables table path (NG-06); undefined = default
- * @returns {Promise<{ exported: number, failed: number, errors: Array<{file: string, message: string}> }>}
+ * @returns {Promise<{ exported: number, failed: number, errors: Array<{file: string, message: string}>,
+ *   warnings: number, lintErrors: number, lintEntries: Array<{level: string, text: string}> }>}
  */
 async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onProgress, variablesPath) {
     // Normalize inputs
@@ -77,7 +78,9 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
     let exported = 0;
     let failed = 0;
     let warningCount = 0;
+    let lintErrorCount = 0;
     const errors = [];
+    const lintEntries = [];
     const total = inScopeFiles.length;
     let processed = 0;
 
@@ -116,8 +119,13 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
                 externalVariables: externalVariables,
                 warnings: fileWarnings
             });
-            for (const w of fileWarnings) console.warn(`[Narrative Tool] 导出警告 (${file.path}):`, w);
-            warningCount += fileWarnings.length;
+            for (const w of fileWarnings) console.warn(`[Narrative Tool] 导出警告 (${file.path}):`, w.text);
+            const levels = countWarningLevels(fileWarnings);
+            warningCount += levels.warns;
+            lintErrorCount += levels.errors;
+            for (const w of fileWarnings) {
+                lintEntries.push({ level: w.level, text: `[${file.path}] ${w.text}` });
+            }
 
             // 4. Construct output filename (flat basename layout)
             // outBasename = <basename>.dialogue; duplicate-basename prefix
@@ -151,7 +159,7 @@ async function exportAllDialogues(app, exportPath, exportScope, medEnabled, onPr
         }
     }
 
-    return { exported, failed, errors, warnings: warningCount };
+    return { exported, failed, errors, warnings: warningCount, lintErrors: lintErrorCount, lintEntries };
 }
 
 // ---------------------------------------------------------------------------

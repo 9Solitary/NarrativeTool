@@ -137,6 +137,53 @@
     color: var(--color-red);
 }
 
+/* Diagnostic state: persistent red lint count, clickable to open the list */
+.nt-status-diagnostic {
+    color: var(--color-red);
+    font-weight: 600;
+}
+
+.narrative-tool-status.is-clickable {
+    cursor: pointer;
+}
+
+/* Warnings modal */
+.nt-warnings-modal__hint {
+    color: var(--text-muted);
+}
+
+.nt-warnings-modal__list {
+    max-height: 50vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nt-warnings-modal__row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-size: var(--font-ui-small);
+}
+
+.nt-warnings-modal__badge {
+    flex-shrink: 0;
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: var(--font-ui-smaller);
+}
+
+.nt-warnings-modal__row--error .nt-warnings-modal__badge {
+    color: var(--text-on-accent);
+    background: var(--color-red);
+}
+
+.nt-warnings-modal__row--warn .nt-warnings-modal__badge {
+    color: var(--text-on-accent);
+    background: var(--color-yellow);
+}
+
 /* Spinner animation keyframes */
 @keyframes nt-spin {
     to {

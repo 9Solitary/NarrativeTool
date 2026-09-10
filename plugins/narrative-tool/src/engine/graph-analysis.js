@@ -35,6 +35,14 @@
 
 const { slugifyCueName } = require('./gd-format');
 
+// Warning entries are structured: { level: 'error'|'warn', text: string }.
+// 'error' (红) — the export is wrong or lossy (dead end, dropped links,
+// truncated cycle); blocks auto-export and sticks in the status bar.
+// 'warn' (黄) — advisory only.
+function err(text) {
+    return { level: 'error', text: text };
+}
+
 /**
  * Detect whether every arm of a conditional-link group re-converges on one
  * shared node through simple linear chains (no Choices, no nested branches,
@@ -108,7 +116,7 @@ function findBranchConvergence(children, adjacency, nodeMap, graph) {
  *   loops: Map<string, string>,      // choiceNodeId -> cue name
  *   loopEdges: Set<string>,          // link.id of back-edges into loop Choices
  *   merges: Map<string, string>,     // mergeNodeId -> cue name
- *   warnings: Array<string>
+ *   warnings: Array<{level: 'error'|'warn', text: string}>
  * }}
  */
 function analyzeGraph(nodes, links, startId) {
@@ -250,10 +258,10 @@ function analyzeGraph(nodes, links, startId) {
     // anything else is genuinely unsupported and the walk truncates it.
     for (const to of deferredCycleWarnings) {
         if (merges.has(to)) continue;
-        warnings.push(
+        warnings.push(err(
             `Cycle to non-Choice node '${to}' is not supported; ` +
             `the edge is ignored (draw the loop back to a Choice node instead).`
-        );
+        ));
     }
 
     // ----- Pass 3: dead-end lint -----
@@ -267,11 +275,11 @@ function analyzeGraph(nodes, links, startId) {
         const out = adjacency.get(id) || [];
         if (out.length > 0) continue;
         const label = node.title ? ` ("${node.title}")` : '';
-        warnings.push(
+        warnings.push(err(
             `Dead end at ${node.type} node '${id}'${label}: ` +
             `no outgoing link leads anywhere — connect it to an End node ` +
             `(or loop it back to a Choice) so the dialogue can terminate.`
-        );
+        ));
     }
 
     // ----- Pass 4: unconditional multi-exit choice option lint -----
@@ -312,11 +320,11 @@ function analyzeGraph(nodes, links, startId) {
                 optionText = node.choices[Number(key.slice(4))];
             }
             const optionLabel = optionText ? ` ("${optionText}")` : '';
-            warnings.push(
+            warnings.push(err(
                 `Choice node '${id}' option${optionLabel} has ${group.length} outgoing links ` +
                 `without requirements; only the first is exported. ` +
                 `Add conditions (e.g. check passed/failed) or remove the extra links.`
-            );
+            ));
         }
     }
 

@@ -398,10 +398,12 @@ function formatChoiceNode(node, ctx) {
             // to register (loop target is not a Choice). Terminate and warn
             // instead of recursing until the stack overflows.
             if (Array.isArray(ctx.warnings)) {
-                ctx.warnings.push(
-                    `Cycle through node '${startNodeId}' cannot be represented; ` +
-                    `the branch is truncated here (draw the loop back to a Choice node instead).`
-                );
+                ctx.warnings.push({
+                    level: 'error',
+                    text:
+                        `Cycle through node '${startNodeId}' cannot be represented; ` +
+                        `the branch is truncated here (draw the loop back to a Choice node instead).`
+                });
             }
             return [];
         }

@@ -10,7 +10,7 @@
 // copies (Phase 2 plugin main.js and narrative-project main.js inline
 // command).
 
-const { exportEngine } = require('../engine/export-engine');
+const { exportEngine, countWarningLevels } = require('../engine/export-engine');
 const { writeDialogueFile } = require('./paths');
 const { loadSharedCharacters } = require('./shared-characters');
 const { loadSharedVariables } = require('./shared-variables');
@@ -74,10 +74,9 @@ async function doExport(plugin, file) {
             externalVariables: await loadSharedVariables(plugin.app, plugin.settings.variablesPath),
             warnings: warnings
         });
-        if (warnings.length > 0) {
-            for (const w of warnings) console.warn('[Narrative Tool] 导出警告:', w);
-            notify(`导出 "${title}" 有 ${warnings.length} 条警告（详见控制台）`);
-        }
+        const { errors: errorCount, warns: warnCount } = countWarningLevels(warnings);
+        for (const w of warnings) console.warn('[Narrative Tool] 导出警告:', w.text);
+        plugin.statusBar.setDiagnostics(warnings.map(w => ({ level: w.level, text: w.text })));
 
         // 3. Status bar: exporting
         plugin.statusBar.setState('exporting', { count: 1 });
@@ -91,10 +90,22 @@ async function doExport(plugin, file) {
             dialogueOutput
         );
 
-        // 5. Success: status bar + notice, revert to pending after 5s
-        plugin.statusBar.setState('success', { exported: 1, failed: 0 });
-        notify(`已导出 "${title}" → ${result.path}`);
-        setTimeout(() => plugin.statusBar.setState('pending'), 5000);
+        // 5. Result reporting. Red (error-level) diagnostics stick in the
+        //    status bar until fixed — no 5s revert; yellow ones get a Notice.
+        if (errorCount > 0) {
+            plugin.statusBar.setState('diagnostic', { errors: errorCount, warns: warnCount });
+            const preview = warnings.filter(w => w.level === 'error').slice(0, 3)
+                .map(w => w.text).join('\n');
+            notify(`导出 "${title}" 有 ${errorCount} 条错误（点击状态栏查看详情）\n${preview}`, 'error');
+        } else {
+            plugin.statusBar.setState('success', { exported: 1, failed: 0 });
+            if (warnCount > 0) {
+                notify(`已导出 "${title}" → ${result.path}（${warnCount} 条警告，点击状态栏查看）`);
+            } else {
+                notify(`已导出 "${title}" → ${result.path}`);
+            }
+            setTimeout(() => plugin.statusBar.setState('pending'), 5000);
+        }
     } catch (err) {
         plugin.statusBar.setState('failure', { message: err.message });
         notify(`导出失败：${err.message}`, 'error');
