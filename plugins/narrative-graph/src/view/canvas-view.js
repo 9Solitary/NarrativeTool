@@ -29,9 +29,11 @@
 // (Entry pasted as Content); Ctrl/Cmd+Z / Ctrl+Shift+Z / Ctrl+Y drive a
 // snapshot history (model/history.js, cap 50, committed mutations only —
 // navigation/selection/variables-panel edits create no entries).
-// Node search: Ctrl/Cmd+F focuses the toolbar search box via a DOCUMENT-
-// level capture keydown gated on this view being the active leaf (works
-// without container focus; background tabs never hijack); state lives in
+// Node search: Ctrl/Cmd+F focuses the toolbar search box via a WINDOW-
+// level capture keydown gated on this view being the active leaf (window
+// because Obsidian's keymap stopPropagations Ctrl+F at the window capture
+// phase, so document listeners never fire; works without container focus;
+// background tabs never hijack); state lives in
 // view fields, restored across re-renders; matches id/title/body/turns/
 // Choice options, case-insensitive; Enter/Shift+Enter and the toolbar ‹ ›
 // buttons cycle hits and center the camera. Selected edges expose a target-end drag handle that rewrites
@@ -255,10 +257,14 @@ class NarrativeGraphView extends TextFileView {
         this.contentEl.addEventListener('keydown', this._onKeyDown);
         this.contentEl.addEventListener('keyup', this._onKeyUp);
         // Ctrl/Cmd+F must work even when the canvas container does NOT hold
-        // focus (user clicked other UI): document-level CAPTURE listener,
-        // gated on this view being the active one so inactive/background
-        // tabs never hijack the keystroke.
-        document.addEventListener('keydown', this._onDocKeyDown, true);
+        // focus (user clicked other UI): WINDOW-level CAPTURE listener.
+        // document capture is not enough — Obsidian's keymap consumes Ctrl+F
+        // at the window capture phase (bound to "search in current note")
+        // and stopPropagation()s it, so the event never reaches document.
+        // stopPropagation does NOT block other listeners on the SAME target,
+        // so a window-level listener still fires. Gated on this view being
+        // the active one so inactive/background tabs never hijack the key.
+        window.addEventListener('keydown', this._onDocKeyDown, true);
         // M2a: watch the global variables file for external edits (NG-06).
         if (this.app && this.app.vault && typeof this.app.vault.on === 'function') {
             this._varsModifyRef = this.app.vault.on('modify', (file) => this._onVaultModify(file));
@@ -272,7 +278,7 @@ class NarrativeGraphView extends TextFileView {
         this.contentEl.removeEventListener('pointermove', this._onHoverMove);
         this.contentEl.removeEventListener('keydown', this._onKeyDown);
         this.contentEl.removeEventListener('keyup', this._onKeyUp);
-        document.removeEventListener('keydown', this._onDocKeyDown, true);
+        window.removeEventListener('keydown', this._onDocKeyDown, true);
         this._cancelDrags();
         if (this._varsModifyRef && this.app && this.app.vault
             && typeof this.app.vault.offref === 'function') {
@@ -609,13 +615,15 @@ class NarrativeGraphView extends TextFileView {
         return false;
     }
 
-    // Document-level CAPTURE keydown: Ctrl/Cmd+F focuses + selects the
+    // Window-level CAPTURE keydown: Ctrl/Cmd+F focuses + selects the
     // toolbar search box even when the canvas container has no focus (UAT:
     // the container-level handler never fired after clicking other UI).
-    // Capture + stopPropagation so the browser/Obsidian default find and the
-    // container handler never see it; gated by _isActiveView() so background
-    // canvas tabs don't hijack the keystroke. Steals focus from other inputs
-    // deliberately (old NarrativeCanvas behavior).
+    // Must live on `window`, not `document`: Obsidian's keymap handles
+    // Ctrl+F ("search in current note") at the window capture phase and
+    // stopPropagation()s it — document listeners never see the key, while
+    // same-target window listeners still do. Gated by _isActiveView() so
+    // background canvas tabs don't hijack the keystroke. Steals focus from
+    // other inputs deliberately (old NarrativeCanvas behavior).
     _handleDocKeyDown(evt) {
         if (!(evt.ctrlKey || evt.metaKey)) return;
         if (evt.key !== 'f' && evt.key !== 'F') return;
@@ -1706,7 +1714,7 @@ class NarrativeGraphView extends TextFileView {
                 evt.preventDefault();
                 this._pasteClipboard();
             }
-            // Ctrl/Cmd+F lives on the DOCUMENT capture listener
+            // Ctrl/Cmd+F lives on the WINDOW capture listener
             // (_handleDocKeyDown) so it works without container focus.
             return; // 其余 mod 组合（Ctrl+S 等）不在画布消费
         }
