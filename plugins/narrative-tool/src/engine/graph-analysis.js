@@ -17,6 +17,16 @@
 // exclusion is a conditional-link group whose arms re-converge (inline
 // fall-through, Pass 2.5) — those keep their inline if/else output.
 //
+// Lint passes (warnings only, output unchanged):
+//   - Pass 3: reachable non-End nodes with no outgoing links at all are
+//     dead ends — at runtime the branch falls through to the next section
+//     instead of terminating. Loop back-edges count as a valid terminal
+//     (they emit `=> cue`).
+//   - Pass 4: a single Choice option with multiple outgoing links where any
+//     link lacks requirements is ambiguous — the exporter keeps only the
+//     first link. Conditional links (e.g. check passed/failed) are the
+//     legitimate multi-exit pattern and stay silent.
+//
 // Regression contract: for acyclic graphs without convergence this returns
 // all-empty results and the main walk is byte-identical to the pre-Phase-6
 // behavior (10 golden files).
@@ -244,6 +254,70 @@ function analyzeGraph(nodes, links, startId) {
             `Cycle to non-Choice node '${to}' is not supported; ` +
             `the edge is ignored (draw the loop back to a Choice node instead).`
         );
+    }
+
+    // ----- Pass 3: dead-end lint -----
+    // A reachable non-End node with no outgoing links at all terminates
+    // nothing: at runtime the branch (or shared section) falls through to
+    // whatever follows in document order. Nodes whose only out-edges are
+    // loop back-edges end with a `=> cue` jump and are valid terminals.
+    for (const id of visited) {
+        const node = nodeMap.get(id);
+        if (!node || node.type === 'End') continue;
+        const out = adjacency.get(id) || [];
+        if (out.length > 0) continue;
+        const label = node.title ? ` ("${node.title}")` : '';
+        warnings.push(
+            `Dead end at ${node.type} node '${id}'${label}: ` +
+            `no outgoing link leads anywhere — connect it to an End node ` +
+            `(or loop it back to a Choice) so the dialogue can terminate.`
+        );
+    }
+
+    // ----- Pass 4: unconditional multi-exit choice option lint -----
+    // The exporter resolves an option's target with links.find(...), so only
+    // the FIRST link of an option group is ever followed. Multiple links on
+    // one option are legitimate when each carries requirements (e.g. a check
+    // passed/failed pair); without any condition the extra links are dead
+    // weight and almost always a authoring mistake.
+    for (const id of visited) {
+        const node = nodeMap.get(id);
+        if (!node || node.type !== 'Choice') continue;
+        const out = adjacency.get(id) || [];
+        if (out.length < 2) continue;
+        const groups = new Map();
+        for (let i = 0; i < out.length; i++) {
+            const link = out[i];
+            const key = link.choiceOptionId !== undefined && link.choiceOptionId !== null
+                ? 'opt:' + link.choiceOptionId
+                : link.choiceIndex !== undefined && link.choiceIndex !== null
+                    ? 'idx:' + link.choiceIndex
+                    : 'pos:' + i;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(link);
+        }
+        for (const [key, group] of groups) {
+            if (group.length < 2) continue;
+            const hasRequirements = l =>
+                typeof l.requirements === 'string' && l.requirements.trim().length > 0;
+            if (group.every(hasRequirements)) continue;
+            // Resolve a human-readable option label: rich choiceOptions[]
+            // (keyed by choiceOptionId) or the legacy choices[] string array
+            // (keyed by choiceIndex).
+            let optionText;
+            if (key.startsWith('opt:') && Array.isArray(node.choiceOptions)) {
+                const opt = node.choiceOptions.find(o => o && o.id === key.slice(4));
+                optionText = opt && (opt.label || opt.text);
+            } else if (key.startsWith('idx:') && Array.isArray(node.choices)) {
+                optionText = node.choices[Number(key.slice(4))];
+            }
+            const optionLabel = optionText ? ` ("${optionText}")` : '';
+            warnings.push(
+                `Choice node '${id}' option${optionLabel} has ${group.length} outgoing links ` +
+                `without requirements; only the first is exported. ` +
+                `Add conditions (e.g. check passed/failed) or remove the extra links.`
+            );
+        }
     }
 
     return { loops, loopEdges, merges, warnings };
